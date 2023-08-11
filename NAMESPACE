@@ -1,0 +1,4 @@
+useDynLib(rollshap, .registration = TRUE)
+export(roll_shap)
+importFrom(Rcpp, evalCpp)
+importFrom(RcppParallel, RcppParallelLibs)
