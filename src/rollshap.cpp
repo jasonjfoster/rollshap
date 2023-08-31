@@ -685,7 +685,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     NumericMatrix xxx(xx.size(), 1, xx.begin()); // consistent with roll's roll_lm
     
     int n_rows_xy = xxx.nrow();
-    int n_cols_x = xxx.ncol();
+    // int n_cols_x = xxx.ncol();
     int n_cols_y = yy.ncol();
     List result_rsq(n_cols_y);
     List result_z(3);
@@ -756,7 +756,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     NumericVector yy(y);
     
     int n_rows_xy = xx.size();
-    int n_cols_x = 1;
+    // int n_cols_x = 1;
     int n_cols_y = 1;
     List result_rsq(n_cols_y);
     List result_z(3);
@@ -789,8 +789,8 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       
       // create and return a vector object for Shapley values
       NumericVector rsq(wrap(arma_rsq_z));
-      List names = xx.attr("names");
       rsq.attr("dim") = R_NilValue;
+      List names = xx.attr("names");
       if (names.size() > 0) {
         rsq.attr("names") = names;
       }
