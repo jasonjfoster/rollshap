@@ -23,7 +23,7 @@ library(rollshap)
 n <- 15
 m <- 3
 x <- matrix(rnorm(n * m), nrow = n, ncol = m)
-y <- matrix(rnorm(n))
+y <- rnorm(n)
 weights <- 0.9 ^ (n:1)
 ```
 Then, to compute rolling and expanding Shapley values, use the `roll_shap` function:

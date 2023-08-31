@@ -385,62 +385,112 @@ List roll_lm_z(const SEXP& x, const NumericVector& y,
   
 }
 
-List roll_lm(const SEXP& x, const SEXP& y,
-             const int& width, const arma::vec& weights,
-             const bool& intercept, const int& min_obs,
-             const bool& complete_obs, const bool& na_restore,
-             const bool& online) {
+int factorial(int n) {
+  
+  int result = 1;
+  
+  for (int i = 2; i <= n; i++) {
+    result *= i;
+  }
+  
+  return result;
+  
+}
+
+// [[Rcpp::export(.roll_shap)]]
+SEXP roll_shap(const SEXP& x, const SEXP& y,
+               const int& width, const arma::vec& weights,
+               const bool& intercept, const int& min_obs,
+               const bool& complete_obs, const bool& na_restore,
+               const bool& online) {
   
   if (Rf_isMatrix(x) && Rf_isMatrix(y)) {
     
     NumericMatrix xx(x);
     NumericMatrix yy(y);
+    
+    int n = 0;
+    int n_size = 0;
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
     int n_cols_y = yy.ncol();
-    List result_coef(n_cols_y);
+    int n_combn = pow((long double)2.0, n_cols_x);
+    arma::mat arma_x = arma::mat(xx.begin(), n_rows_xy, n_cols_x);
+    arma::ivec arma_n(n_combn);
+    arma::umat arma_ix(n_cols_x, n_combn);
+    arma::mat arma_rsq(n_rows_xy, n_combn);
+    arma::mat arma_rsq_sum(n_rows_xy, n_cols_x);
     List result_rsq(n_cols_y);
-    List result_se(n_cols_y);
     List result_z(3);
-    List result(3);
-    
-    if (intercept) {
-      n_cols_x += 1;
-    }
     
     // create a list of matrices,
     // otherwise a list of lists
     if (n_cols_y == 1) {
       
-      result_z = roll_lm_z(xx, yy(_, 0), width,
-                           weights, intercept, min_obs,
-                           complete_obs, na_restore,
-                           online);
-      
-      arma::mat arma_coef_z = result_z[0];
-      arma::mat arma_rsq_z = result_z[1];
-      arma::mat arma_se_z = result_z[2];
-      
-      // create and return a matrix or xts object for coefficients
-      NumericVector coef(wrap(arma_coef_z));
-      coef.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-      List dimnames_x = xx.attr("dimnames");
-      coef.attr("dimnames") = dimnames_lm_x(dimnames_x, n_cols_x, intercept);
-      coef.attr("index") = xx.attr("index");
-      coef.attr(".indexCLASS") = xx.attr(".indexCLASS");
-      coef.attr(".indexTZ") = xx.attr(".indexTZ");
-      coef.attr("tclass") = xx.attr("tclass");
-      coef.attr("tzone") = xx.attr("tzone");
-      coef.attr("class") = xx.attr("class");
-      
-      // create and return a matrix or xts object for r-squareds
-      NumericVector rsq(wrap(arma_rsq_z));
-      rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
-      if (dimnames_x.size() > 1) {
-        rsq.attr("dimnames") = List::create(dimnames_x[0], "R-squared");
-      } else {
-        rsq.attr("dimnames") = List::create(R_NilValue, "R-squared");
+      // find all possible combinations of binary values
+      for (int k = 0; k < n_combn; k++) {
+        
+        n = 0;
+        n_size = k;
+        
+        for (int j = 0; j < n_cols_x; j++) {
+          
+          if (n_size % 2 == 0) {
+            
+            n += 1;
+            
+            arma_ix(j, k) = j + 1;
+            
+          }
+          
+          n_size /= 2;
+          
+        }
+        
+        arma_n[k] = n;
+        
+        if (n > 0) {
+          
+          arma::uvec arma_ix_subset = find(arma_ix.col(k));
+          arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
+          NumericMatrix x_subset(wrap(arma_x_subset));
+          
+          result_z = roll_lm_z(x_subset, yy(_, 0), width,
+                               weights, intercept, min_obs,
+                               complete_obs, na_restore,
+                               online);
+          
+          arma::mat arma_rsq_z = result_z[1];
+          arma_rsq.col(k) = arma_rsq_z;
+          
+        }
+        
       }
+      
+      // calculate the exact Shapley value for r-squared
+      for (int j = 0; j < n_cols_x; j++) {
+        
+        arma::uvec arma_ix_pos = find(arma_ix.row(j));
+        arma::uvec arma_ix_neg = find(arma_ix.row(j) == 0);
+        arma::ivec arma_ix_n = arma_n(arma_ix_neg);
+        arma::mat arma_rsq_diff = arma_rsq.cols(arma_ix_pos) - arma_rsq.cols(arma_ix_neg);
+        
+        for (int k = 0; k < n_combn / 2; k++) {
+          
+          int s = arma_ix_n[k];
+          long double weight = (factorial(s) * factorial(n_cols_x - s - 1)) /
+            (long double)factorial(n_cols_x);
+          
+          arma_rsq_sum.col(j) += weight * arma_rsq_diff.col(k);
+          
+        }
+        
+      }
+      
+      // create and return a matrix or xts object for Shapley values
+      NumericMatrix rsq(wrap(arma_rsq_sum));
+      List dimnames_x = xx.attr("dimnames");
+      rsq.attr("dimnames") = dimnames_x;
       rsq.attr("index") = xx.attr("index");
       rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
       rsq.attr(".indexTZ") = xx.attr(".indexTZ");
@@ -448,55 +498,76 @@ List roll_lm(const SEXP& x, const SEXP& y,
       rsq.attr("tzone") = xx.attr("tzone");
       rsq.attr("class") = xx.attr("class");
       
-      // create and return a matrix or xts object for standard errors
-      NumericVector se(wrap(arma_se_z));
-      se.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-      se.attr("dimnames") = coef.attr("dimnames");
-      se.attr("index") = xx.attr("index");
-      se.attr(".indexCLASS") = xx.attr(".indexCLASS");
-      se.attr(".indexTZ") = xx.attr(".indexTZ");
-      se.attr("tclass") = xx.attr("tclass");
-      se.attr("tzone") = xx.attr("tzone");
-      se.attr("class") = xx.attr("class");
-      
-      // create and return a list
-      result = List::create(Named("coefficients") = coef,
-                            Named("r.squared") = rsq,
-                            Named("std.error") = se);
+      return rsq;
       
     } else {
       
       for (int z = 0; z < n_cols_y; z++) {
         
-        result_z = roll_lm_z(xx, yy(_, z), width,
-                             weights, intercept, min_obs,
-                             complete_obs, na_restore,
-                             online);
-        
-        arma::mat arma_coef_z = result_z[0];
-        arma::mat arma_rsq_z = result_z[1];
-        arma::mat arma_se_z = result_z[2];
-        
-        // create and return a matrix or xts object for coefficients
-        NumericVector coef(wrap(arma_coef_z));
-        coef.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-        List dimnames_x = xx.attr("dimnames");
-        coef.attr("dimnames") = dimnames_lm_x(dimnames_x, n_cols_x, intercept);
-        coef.attr("index") = xx.attr("index");
-        coef.attr(".indexCLASS") = xx.attr(".indexCLASS");
-        coef.attr(".indexTZ") = xx.attr(".indexTZ");
-        coef.attr("tclass") = xx.attr("tclass");
-        coef.attr("tzone") = xx.attr("tzone");
-        coef.attr("class") = xx.attr("class");
-        
-        // create and return a matrix or xts object for r-squareds
-        NumericVector rsq(wrap(arma_rsq_z));
-        rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
-        if (dimnames_x.size() > 1) {
-          rsq.attr("dimnames") = List::create(dimnames_x[0], "R-squared");
-        } else {
-          rsq.attr("dimnames") = List::create(R_NilValue, "R-squared");
+        // find all possible combinations of binary values
+        for (int k = 0; k < n_combn; k++) {
+          
+          n = 0;
+          n_size = k;
+          
+          for (int j = 0; j < n_cols_x; j++) {
+            
+            if (n_size % 2 == 0) {
+              
+              n += 1;
+              
+              arma_ix(j, k) = j + 1;
+              
+            }
+            
+            n_size /= 2;
+            
+          }
+          
+          arma_n[k] = n;
+          
+          if (n > 0) {
+            
+            arma::uvec arma_ix_subset = find(arma_ix.col(k));
+            arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
+            NumericMatrix x_subset(wrap(arma_x_subset));
+            
+            result_z = roll_lm_z(x_subset, yy(_, z), width,
+                                 weights, intercept, min_obs,
+                                 complete_obs, na_restore,
+                                 online);
+            
+            arma::mat arma_rsq_z = result_z[1];
+            arma_rsq.col(k) = arma_rsq_z;
+            
+          }
+          
         }
+        
+        // calculate the exact Shapley value for r-squared
+        for (int j = 0; j < n_cols_x; j++) {
+          
+          arma::uvec arma_ix_pos = find(arma_ix.row(j));
+          arma::uvec arma_ix_neg = find(arma_ix.row(j) == 0);
+          arma::ivec arma_ix_n = arma_n(arma_ix_neg);
+          arma::mat arma_rsq_diff = arma_rsq.cols(arma_ix_pos) - arma_rsq.cols(arma_ix_neg);
+          
+          for (int k = 0; k < n_combn / 2; k++) {
+            
+            int s = arma_ix_n[k];
+            long double weight = (factorial(s) * factorial(n_cols_x - s - 1)) /
+              (long double)factorial(n_cols_x);
+            
+            arma_rsq_sum.col(j) += weight * arma_rsq_diff.col(k);
+            
+          }
+          
+        }
+        
+        // create and return a matrix or xts object for Shapley values
+        NumericMatrix rsq(wrap(arma_rsq_sum));
+        List dimnames_x = xx.attr("dimnames");
+        rsq.attr("dimnames") = dimnames_x;
         rsq.attr("index") = xx.attr("index");
         rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
         rsq.attr(".indexTZ") = xx.attr(".indexTZ");
@@ -504,85 +575,100 @@ List roll_lm(const SEXP& x, const SEXP& y,
         rsq.attr("tzone") = xx.attr("tzone");
         rsq.attr("class") = xx.attr("class");
         
-        // create and return a matrix or xts object for standard errors
-        NumericVector se(wrap(arma_se_z));
-        se.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-        se.attr("dimnames") = coef.attr("dimnames");
-        se.attr("index") = xx.attr("index");
-        se.attr(".indexCLASS") = xx.attr(".indexCLASS");
-        se.attr(".indexTZ") = xx.attr(".indexTZ");
-        se.attr("tclass") = xx.attr("tclass");
-        se.attr("tzone") = xx.attr("tzone");
-        se.attr("class") = xx.attr("class");
-        
-        result_coef(z) = coef;
         result_rsq(z) = rsq;
-        result_se(z) = se;
         
       }
       
       // add names to each list
       List dimnames_y = yy.attr("dimnames");
-      result_coef.attr("names") = dimnames_lm_y(dimnames_y, n_cols_y);
-      result_rsq.attr("names") = result_coef.attr("names");
-      result_se.attr("names") = result_coef.attr("names");
+      result_rsq.attr("names") = dimnames_lm_y(dimnames_y, n_cols_y);
       
-      // create and return a list
-      result = List::create(Named("coefficients") = result_coef,
-                            Named("r.squared") = result_rsq,
-                            Named("std.error") = result_se);
+      return result_rsq;
       
     }
-    
-    return result;
     
   } else if (Rf_isMatrix(x)) {
     
     NumericMatrix xx(x);
     NumericVector yy(y);
     
+    int n = 0;
+    int n_size = 0;
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
-    List result_coef(1);
+    int n_combn = pow((long double)2.0, n_cols_x);
+    arma::mat arma_x = arma::mat(xx.begin(), n_rows_xy, n_cols_x);
+    arma::ivec arma_n(n_combn);
+    arma::umat arma_ix(n_cols_x, n_combn);
+    arma::mat arma_rsq(n_rows_xy, n_combn);
+    arma::mat arma_rsq_sum(n_rows_xy, n_cols_x);
     List result_rsq(1);
-    List result_se(1);
     List result_z(3);
-    List result(3);
     
-    if (intercept) {
-      n_cols_x += 1;
+    // find all possible combinations of binary values
+    for (int k = 0; k < n_combn; k++) {
+      
+      n = 0;
+      n_size = k;
+      
+      for (int j = 0; j < n_cols_x; j++) {
+        
+        if (n_size % 2 == 0) {
+          
+          n += 1;
+          
+          arma_ix(j, k) = j + 1;
+          
+        }
+        
+        n_size /= 2;
+        
+      }
+      
+      arma_n[k] = n;
+      
+      if (n > 0) {
+        
+        arma::uvec arma_ix_subset = find(arma_ix.col(k));
+        arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
+        NumericMatrix x_subset(wrap(arma_x_subset));
+        
+        result_z = roll_lm_z(x_subset, yy, width,
+                             weights, intercept, min_obs,
+                             complete_obs, na_restore,
+                             online);
+        
+        arma::mat arma_rsq_z = result_z[1];
+        arma_rsq.col(k) = arma_rsq_z;
+        
+      }
+      
     }
     
-    // create a list of matrices
-    result_z = roll_lm_z(xx, yy, width,
-                         weights, intercept, min_obs,
-                         complete_obs, na_restore,
-                         online);
+    // calculate the exact Shapley value for r-squared
+    for (int j = 0; j < n_cols_x; j++) {
+      
+      arma::uvec arma_ix_pos = find(arma_ix.row(j));
+      arma::uvec arma_ix_neg = find(arma_ix.row(j) == 0);
+      arma::ivec arma_ix_n = arma_n(arma_ix_neg);
+      arma::mat arma_rsq_diff = arma_rsq.cols(arma_ix_pos) - arma_rsq.cols(arma_ix_neg);
+      
+      for (int k = 0; k < n_combn / 2; k++) {
+        
+        int s = arma_ix_n[k];
+        long double weight = (factorial(s) * factorial(n_cols_x - s - 1)) /
+          (long double)factorial(n_cols_x);
+        
+        arma_rsq_sum.col(j) += weight * arma_rsq_diff.col(k);
+        
+      }
+      
+    }
     
-    arma::mat arma_coef_z = result_z[0];
-    arma::mat arma_rsq_z = result_z[1];
-    arma::mat arma_se_z = result_z[2];
-    
-    // create and return a matrix or xts object for coefficients
-    NumericVector coef(wrap(arma_coef_z));
-    coef.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
+    // create and return a matrix or xts object for Shapley values
+    NumericMatrix rsq(wrap(arma_rsq_sum));
     List dimnames_x = xx.attr("dimnames");
-    coef.attr("dimnames") = dimnames_lm_x(dimnames_x, n_cols_x, intercept);
-    coef.attr("index") = xx.attr("index");
-    coef.attr(".indexCLASS") = xx.attr(".indexCLASS");
-    coef.attr(".indexTZ") = xx.attr(".indexTZ");
-    coef.attr("tclass") = xx.attr("tclass");
-    coef.attr("tzone") = xx.attr("tzone");
-    coef.attr("class") = xx.attr("class");
-    
-    // create and return a matrix or xts object for r-squareds
-    NumericVector rsq(wrap(arma_rsq_z));
-    rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
-    if (dimnames_x.size() > 1) {
-      rsq.attr("dimnames") = List::create(dimnames_x[0], "R-squared");
-    } else {
-      rsq.attr("dimnames") = List::create(R_NilValue, "R-squared");
-    }
+    rsq.attr("dimnames") = dimnames_x;
     rsq.attr("index") = xx.attr("index");
     rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
     rsq.attr(".indexTZ") = xx.attr(".indexTZ");
@@ -590,44 +676,19 @@ List roll_lm(const SEXP& x, const SEXP& y,
     rsq.attr("tzone") = xx.attr("tzone");
     rsq.attr("class") = xx.attr("class");
     
-    // create and return a matrix or xts object for standard errors
-    NumericVector se(wrap(arma_se_z));
-    se.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-    se.attr("dimnames") = coef.attr("dimnames");
-    se.attr("index") = xx.attr("index");
-    se.attr(".indexCLASS") = xx.attr(".indexCLASS");
-    se.attr(".indexTZ") = xx.attr(".indexTZ");
-    se.attr("tclass") = xx.attr("tclass");
-    se.attr("tzone") = xx.attr("tzone");
-    se.attr("class") = xx.attr("class");
-    
-    // create and return a list
-    result = List::create(Named("coefficients") = coef,
-                          Named("r.squared") = rsq,
-                          Named("std.error") = se);
-    
-    return result;
+    return rsq;
     
   } else if (Rf_isMatrix(y)) {
     
     NumericVector xx(x);
     NumericMatrix yy(y);
-    // xx.attr("dim") = IntegerVector::create(xx.size(), 1);
-    // NumericMatrix xxx(wrap(xx));
-    NumericMatrix xxx(xx.size(), 1, xx.begin());
+    NumericMatrix xxx(xx.size(), 1, xx.begin()); // consistent with roll's roll_lm
     
     int n_rows_xy = xxx.nrow();
     int n_cols_x = xxx.ncol();
     int n_cols_y = yy.ncol();
-    List result_coef(n_cols_y);
     List result_rsq(n_cols_y);
-    List result_se(n_cols_y);
     List result_z(3);
-    List result(3);
-    
-    if (intercept) {
-      n_cols_x += 1;
-    }
     
     // create a list of matrices,
     // otherwise a list of lists
@@ -638,30 +699,13 @@ List roll_lm(const SEXP& x, const SEXP& y,
                            complete_obs, na_restore,
                            online);
       
-      arma::mat arma_coef_z = result_z[0];
-      arma::mat arma_rsq_z = result_z[1];
-      arma::mat arma_se_z = result_z[2];
+      arma::vec arma_rsq_z = result_z[1];
       
-      // create and return a matrix or xts object for coefficients
-      NumericVector coef(wrap(arma_coef_z));
-      coef.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-      List dimnames_x = xx.attr("dimnames");
-      coef.attr("dimnames") = dimnames_lm_x(dimnames_x, n_cols_x, intercept);
-      coef.attr("index") = yy.attr("index");
-      coef.attr(".indexCLASS") = yy.attr(".indexCLASS");
-      coef.attr(".indexTZ") = yy.attr(".indexTZ");
-      coef.attr("tclass") = yy.attr("tclass");
-      coef.attr("tzone") = yy.attr("tzone");
-      coef.attr("class") = yy.attr("class");
-      
-      // create and return a matrix or xts object for r-squareds
+      // create and return a vector object for Shapley values
       NumericVector rsq(wrap(arma_rsq_z));
       rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
-      if (dimnames_x.size() > 1) {
-        rsq.attr("dimnames") = List::create(dimnames_x[0], "R-squared");
-      } else {
-        rsq.attr("dimnames") = List::create(R_NilValue, "R-squared");
-      }
+      List dimnames_x = xx.attr("dimnames");
+      rsq.attr("dimnames") = dimnames_x;
       rsq.attr("index") = yy.attr("index");
       rsq.attr(".indexCLASS") = yy.attr(".indexCLASS");
       rsq.attr(".indexTZ") = yy.attr(".indexTZ");
@@ -669,21 +713,7 @@ List roll_lm(const SEXP& x, const SEXP& y,
       rsq.attr("tzone") = yy.attr("tzone");
       rsq.attr("class") = yy.attr("class");
       
-      // create and return a matrix or xts object for standard errors
-      NumericVector se(wrap(arma_se_z));
-      se.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-      se.attr("dimnames") = coef.attr("dimnames");
-      se.attr("index") = yy.attr("index");
-      se.attr(".indexCLASS") = yy.attr(".indexCLASS");
-      se.attr(".indexTZ") = yy.attr(".indexTZ");
-      se.attr("tclass") = yy.attr("tclass");
-      se.attr("tzone") = yy.attr("tzone");
-      se.attr("class") = yy.attr("class");
-      
-      // create and return a list
-      result = List::create(Named("coefficients") = coef,
-                            Named("r.squared") = rsq,
-                            Named("std.error") = se);
+      return rsq;
       
     } else {
       
@@ -694,30 +724,13 @@ List roll_lm(const SEXP& x, const SEXP& y,
                              complete_obs, na_restore,
                              online);
         
-        arma::mat arma_coef_z = result_z[0];
-        arma::mat arma_rsq_z = result_z[1];
-        arma::mat arma_se_z = result_z[2];
+        arma::vec arma_rsq_z = result_z[1];
         
-        // create and return a matrix or xts object for coefficients
-        NumericVector coef(wrap(arma_coef_z));
-        coef.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-        List dimnames_x = xxx.attr("dimnames");
-        coef.attr("dimnames") = dimnames_lm_x(dimnames_x, n_cols_x, intercept);
-        coef.attr("index") = yy.attr("index");
-        coef.attr(".indexCLASS") = yy.attr(".indexCLASS");
-        coef.attr(".indexTZ") = yy.attr(".indexTZ");
-        coef.attr("tclass") = yy.attr("tclass");
-        coef.attr("tzone") = yy.attr("tzone");
-        coef.attr("class") = yy.attr("class");
-        
-        // create and return a matrix or xts object for r-squareds
+        // create and return a vector object for Shapley values
         NumericVector rsq(wrap(arma_rsq_z));
         rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
-        if (dimnames_x.size() > 1) {
-          rsq.attr("dimnames") = List::create(dimnames_x[0], "R-squared");
-        } else {
-          rsq.attr("dimnames") = List::create(R_NilValue, "R-squared");
-        }
+        List dimnames_x = xx.attr("dimnames");
+        rsq.attr("dimnames") = dimnames_x;
         rsq.attr("index") = yy.attr("index");
         rsq.attr(".indexCLASS") = yy.attr(".indexCLASS");
         rsq.attr(".indexTZ") = yy.attr(".indexTZ");
@@ -725,37 +738,17 @@ List roll_lm(const SEXP& x, const SEXP& y,
         rsq.attr("tzone") = yy.attr("tzone");
         rsq.attr("class") = yy.attr("class");
         
-        // create and return a matrix or xts object for standard errors
-        NumericVector se(wrap(arma_se_z));
-        se.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-        se.attr("dimnames") = coef.attr("dimnames");
-        se.attr("index") = yy.attr("index");
-        se.attr(".indexCLASS") = yy.attr(".indexCLASS");
-        se.attr(".indexTZ") = yy.attr(".indexTZ");
-        se.attr("tclass") = yy.attr("tclass");
-        se.attr("tzone") = yy.attr("tzone");
-        se.attr("class") = yy.attr("class");
-        
-        result_coef(z) = coef;
         result_rsq(z) = rsq;
-        result_se(z) = se;
         
       }
       
       // add names to each list
       List dimnames_y = yy.attr("dimnames");
-      result_coef.attr("names") = dimnames_lm_y(dimnames_y, n_cols_y);
-      result_rsq.attr("names") = result_coef.attr("names");
-      result_se.attr("names") = result_coef.attr("names");
+      result_rsq.attr("names") = dimnames_lm_y(dimnames_y, n_cols_y);
       
-      // create and return a list
-      result = List::create(Named("coefficients") = result_coef,
-                            Named("r.squared") = result_rsq,
-                            Named("std.error") = result_se);
+      return result_rsq;
       
     }
-    
-    return result;
     
   } else {
     
@@ -765,15 +758,8 @@ List roll_lm(const SEXP& x, const SEXP& y,
     int n_rows_xy = xx.size();
     int n_cols_x = 1;
     int n_cols_y = 1;
-    List result_coef(n_cols_y);
     List result_rsq(n_cols_y);
-    List result_se(n_cols_y);
     List result_z(3);
-    List result(3);
-    
-    if (intercept) {
-      n_cols_x += 1;
-    }
     
     // create a list of matrices
     result_z = roll_lm_z(xx, yy, width,
@@ -781,32 +767,15 @@ List roll_lm(const SEXP& x, const SEXP& y,
                          complete_obs, na_restore,
                          online);
     
-    arma::mat arma_coef_z = result_z[0];
-    arma::mat arma_rsq_z = result_z[1];
-    arma::mat arma_se_z = result_z[2];
+    arma::vec arma_rsq_z = result_z[1];
     
     if (intercept) {
       
-      // create and return a matrix or xts object for coefficients
-      NumericVector coef(wrap(arma_coef_z));
-      coef.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-      List dimnames_x = xx.attr("dimnames");
-      coef.attr("dimnames") = dimnames_lm_x(dimnames_x, n_cols_x, intercept);
-      coef.attr("index") = xx.attr("index");
-      coef.attr(".indexCLASS") = xx.attr(".indexCLASS");
-      coef.attr(".indexTZ") = xx.attr(".indexTZ");
-      coef.attr("tclass") = xx.attr("tclass");
-      coef.attr("tzone") = xx.attr("tzone");
-      coef.attr("class") = xx.attr("class");
-      
-      // create and return a matrix or xts object for r-squareds
+      // create and return a vector object for Shapley values
       NumericVector rsq(wrap(arma_rsq_z));
       rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
-      if (dimnames_x.size() > 1) {
-        rsq.attr("dimnames") = List::create(dimnames_x[0], "R-squared");
-      } else {
-        rsq.attr("dimnames") = List::create(R_NilValue, "R-squared");
-      }
+      List dimnames_x = xx.attr("dimnames");
+      rsq.attr("dimnames") = dimnames_x;
       rsq.attr("index") = xx.attr("index");
       rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
       rsq.attr(".indexTZ") = xx.attr(".indexTZ");
@@ -814,38 +783,13 @@ List roll_lm(const SEXP& x, const SEXP& y,
       rsq.attr("tzone") = xx.attr("tzone");
       rsq.attr("class") = xx.attr("class");
       
-      // create and return a matrix or xts object for standard errors
-      NumericVector se(wrap(arma_se_z));
-      se.attr("dim") = IntegerVector::create(n_rows_xy, n_cols_x);
-      se.attr("dimnames") = coef.attr("dimnames");
-      se.attr("index") = xx.attr("index");
-      se.attr(".indexCLASS") = xx.attr(".indexCLASS");
-      se.attr(".indexTZ") = xx.attr(".indexTZ");
-      se.attr("tclass") = xx.attr("tclass");
-      se.attr("tzone") = xx.attr("tzone");
-      se.attr("class") = xx.attr("class");
-      
-      // create and return a list
-      result = List::create(Named("coefficients") = coef,
-                            Named("r.squared") = rsq,
-                            Named("std.error") = se);
-      
-      return result;
+      return rsq;
       
     } else {
       
-      // create and return a vector object for coefficients
-      NumericVector coef(wrap(arma_coef_z));
-      coef.attr("dim") = R_NilValue;
-      List names = xx.attr("names");
-      if (names.size() > 0) {
-        coef.attr("names") = names;
-      }
-      coef.attr("index") = xx.attr("index");
-      coef.attr("class") = xx.attr("class");
-      
-      // create and return a vector object for r-squareds
+      // create and return a vector object for Shapley values
       NumericVector rsq(wrap(arma_rsq_z));
+      List names = xx.attr("names");
       rsq.attr("dim") = R_NilValue;
       if (names.size() > 0) {
         rsq.attr("names") = names;
@@ -853,118 +797,10 @@ List roll_lm(const SEXP& x, const SEXP& y,
       rsq.attr("index") = xx.attr("index");
       rsq.attr("class") = xx.attr("class");
       
-      // create and return a vector object for standard errors
-      NumericVector se(wrap(arma_se_z));
-      se.attr("dim") = R_NilValue;
-      if (names.size() > 0) {
-        se.attr("names") = names;
-      }
-      se.attr("index") = xx.attr("index");
-      se.attr("class") = xx.attr("class");
-      
-      // create and return a list
-      result = List::create(Named("coefficients") = coef,
-                            Named("r.squared") = rsq,
-                            Named("std.error") = se);
-      
-      return result;
+      return rsq;
       
     }
     
   }
-  
-}
-
-int factorial(int n) {
-  
-  int result = 0;
-  
-  if (n == 0 || n == 1) {
-    result = 1;
-  } else {
-    result = n * factorial(n - 1);
-  }
-  
-  return result;
-  
-}
-
-// [[Rcpp::export(.roll_shap)]]
-arma::mat roll_shap(const NumericMatrix& x, const NumericMatrix& y,
-                    const int& width, const arma::vec& weights,
-                    const bool& intercept, const int& min_obs,
-                    const bool& complete_obs, const bool& na_restore,
-                    const bool& online) {
-  
-  int n = 0;
-  int n_rows_x = x.nrow();
-  int n_cols_x = x.ncol();
-  int n_combn = pow((long double)2.0, n_cols_x);
-  arma::mat arma_x = arma::mat(x.begin(), n_rows_x, n_cols_x);
-  arma::ivec arma_n(n_combn);
-  arma::umat arma_ix(n_cols_x, n_combn);
-  arma::mat arma_rsq(n_rows_x, n_combn);
-  arma::mat arma_rsq_sum(n_rows_x, n_cols_x);
-  
-  // number of index combinations
-  for (int z = 0; z < n_combn; z++) {
-    
-    n = 0;
-    
-    // find the index combination
-    for (int j = 0; j < n_cols_x; j++) {
-      
-      if (!(z & (int)pow((long double)2.0, j))) {
-        
-        n += 1;
-        
-        arma_ix(j, z) = j + 1;
-        
-      }
-      
-    }
-    
-    arma_n[z] = n;
-    
-    if (n > 0) {
-      
-      arma::uvec arma_ix_subset = find(arma_ix.col(z));
-      arma::mat x_subset = arma_x.cols(arma_ix_subset);
-      NumericMatrix xx_subset(wrap(x_subset));
-      
-      List result = roll_lm(xx_subset, y,
-                            width, weights,
-                            intercept, min_obs,
-                            complete_obs, na_restore,
-                            online);
-      
-      arma::mat rsq = result["r.squared"];
-      arma_rsq.col(z) = rsq;
-      
-    }
-    
-  }
-  
-  // compute the score
-  for (int j = 0; j < n_cols_x; j++) {
-    
-    arma::uvec arma_ix_pos = find(arma_ix.row(j));
-    arma::uvec arma_ix_neg = find(arma_ix.row(j) == 0);
-    arma::ivec arma_ix_n = arma_n(arma_ix_neg);
-    arma::mat arma_rsq_diff = arma_rsq.cols(arma_ix_pos) - arma_rsq.cols(arma_ix_neg);
-    
-    for (int z = 0; z < n_combn / 2; z++) {
-      
-      int s = arma_ix_n[z];
-      long double weight = (factorial(s) * factorial(n_cols_x - s - 1)) /
-        (long double)factorial(n_cols_x);
-      
-      arma_rsq_sum.col(j) += weight * arma_rsq_diff.col(z);
-      
-    }
-    
-  }
-  
-  return arma_rsq_sum;
   
 }
