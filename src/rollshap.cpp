@@ -427,12 +427,13 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     // otherwise a list of lists
     if (n_cols_y == 1) {
       
-      // find all possible combinations of binary values
+      // number of binary combinations
       for (int k = 0; k < n_combn; k++) {
         
         n = 0;
         n_size = k;
         
+        // find the binary combination
         for (int j = 0; j < n_cols_x; j++) {
           
           if (n_size % 2 == 0) {
@@ -504,12 +505,13 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       
       for (int z = 0; z < n_cols_y; z++) {
         
-        // find all possible combinations of binary values
+        // number of binary combinations
         for (int k = 0; k < n_combn; k++) {
           
           n = 0;
           n_size = k;
           
+          // find the binary combination
           for (int j = 0; j < n_cols_x; j++) {
             
             if (n_size % 2 == 0) {
@@ -605,12 +607,13 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_rsq(1);
     List result_z(3);
     
-    // find all possible combinations of binary values
+    // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
       
       n = 0;
       n_size = k;
       
+      // find the binary combination
       for (int j = 0; j < n_cols_x; j++) {
         
         if (n_size % 2 == 0) {
