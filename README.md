@@ -10,7 +10,7 @@ Install the development version from GitHub:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("jjf234/rollshap") # roll (>= 1.1.7)
+devtools::install_github("jasonjfoster/rollshap") # roll (>= 1.1.7)
 ```
 
 ## Usage
