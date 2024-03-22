@@ -461,7 +461,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
                                complete_obs, na_restore,
                                online);
           
-          arma::mat arma_rsq_z = result_z[1];
+          arma::mat arma_rsq_z = result_z["r.squared"];
           arma_rsq.col(k) = arma_rsq_z;
           
         }
@@ -539,7 +539,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
                                  complete_obs, na_restore,
                                  online);
             
-            arma::mat arma_rsq_z = result_z[1];
+            arma::mat arma_rsq_z = result_z["r.squared"];
             arma_rsq.col(k) = arma_rsq_z;
             
           }
@@ -641,7 +641,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
                              complete_obs, na_restore,
                              online);
         
-        arma::mat arma_rsq_z = result_z[1];
+        arma::mat arma_rsq_z = result_z["r.squared"];
         arma_rsq.col(k) = arma_rsq_z;
         
       }
@@ -702,7 +702,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
                            complete_obs, na_restore,
                            online);
       
-      arma::vec arma_rsq_z = result_z[1];
+      arma::vec arma_rsq_z = result_z["r.squared"];
       
       // create and return a vector object for Shapley values
       NumericVector rsq(wrap(arma_rsq_z));
@@ -727,7 +727,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
                              complete_obs, na_restore,
                              online);
         
-        arma::vec arma_rsq_z = result_z[1];
+        arma::vec arma_rsq_z = result_z["r.squared"];
         
         // create and return a vector object for Shapley values
         NumericVector rsq(wrap(arma_rsq_z));
@@ -770,7 +770,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
                          complete_obs, na_restore,
                          online);
     
-    arma::vec arma_rsq_z = result_z[1];
+    arma::vec arma_rsq_z = result_z["r.squared"];
     
     if (intercept) {
       
