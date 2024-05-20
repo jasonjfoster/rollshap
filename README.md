@@ -1,5 +1,7 @@
 # rollshap
 
+[![](https://github.com/jasonjfoster/rollshap/actions/workflows/check-standard.yaml/badge.svg)](https://github.com/jasonjfoster/rollshap/actions/workflows/check-standard.yaml)
+
 ## Overview
 
 `rollshap` is a package that provides analytical computation of rolling and expanding Shapley values for time-series data.
