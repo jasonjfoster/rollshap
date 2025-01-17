@@ -7,8 +7,8 @@ Author: Jason Foster
 Maintainer: Jason Foster <jason.j.foster@gmail.com>
 Description: Analytical computation of rolling Shapley values for time-series data.
 License: GPL (>= 2)
-URL: https://github.com/jasonjfoster/rollpca
-BugReports: https://github.com/jasonjfoster/rollpca/issues
+URL: https://github.com/jasonjfoster/rollshap
+BugReports: https://github.com/jasonjfoster/rollshap/issues
 Imports: Rcpp, RcppParallel
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, roll (>= 1.1.7)
 SystemRequirements: GNU make
