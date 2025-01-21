@@ -12,7 +12,7 @@ Install the development version from GitHub:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("jasonjfoster/rollshap") # roll (>= 1.1.7)
+devtools::install_github("jasonjfoster/rollshap")
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ devtools::install_github("jasonjfoster/rollshap") # roll (>= 1.1.7)
 Load the package and supply a dataset:
 
 ``` r
-library(rollshap)
+library(rollshap) # roll (>= 1.1.7)
 
 n <- 15
 m <- 3
