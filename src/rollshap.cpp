@@ -4,6 +4,15 @@
 using namespace Rcpp;
 using namespace RcppParallel;
 
+void check_n_cols(const int& n_cols) {
+
+  if (n_cols > 20) {
+    stop("value of 'n_cols' must be less than or equal to 20");
+  }
+
+
+}
+
 void check_width(const int& width) {
   
   if (width < 1) {
@@ -16,7 +25,7 @@ void check_weights_lm(const int& n_rows_xy, const int& width,
                       const arma::vec& weights) {
   
   if ((int)weights.size() < std::min(width, n_rows_xy)) {
-    stop("length of 'weights' must equal either the number of rows in 'x' (and 'y') or 'width'");
+    stop("length of 'weights' must be greater than or equal to the number of rows in 'x' (and 'y') or 'width'");
   }
   
 }
@@ -31,13 +40,12 @@ bool check_lambda(const arma::vec& weights, const int& n_rows_x,
   // check if exponential-weights
   if (!status_eq) {
     
-    int i = 0;
     int n = weights.size();
     long double lambda = 0;
     long double lambda_prev = 0;
     
     // check if constant ratio
-    while (status_exp && (i <= (n - 2))) {
+    for (int i = 0; (i < n - 1) && status_exp; i++) {
       
       // ratio of weights
       lambda_prev = lambda;
@@ -51,8 +59,6 @@ bool check_lambda(const arma::vec& weights, const int& n_rows_x,
         status_exp = false;
         
       }
-      
-      i += 1;
       
     }
     
@@ -85,46 +91,51 @@ void check_lm(const int& n_rows_x, const int& n_rows_y) {
 List dimnames_lm_x(const List& input, const int& n_cols_x,
                    const bool& intercept) {
   
-  if (intercept && (input.size() > 1)) {
+  CharacterVector result(n_cols_x);
+  
+  if (input.size() > 1) {
     
     CharacterVector dimnames_cols = input[1];
-    CharacterVector result(n_cols_x);
-    result(0) = "(Intercept)";
     
-    std::copy(dimnames_cols.begin(), dimnames_cols.end(), result.begin() + 1);
-    
-    return List::create(input[0], result);
-    
-  } else if (!intercept && (input.size() > 1)) {
-    
-    return List::create(input[0], input[1]);
-    
-  } else if (intercept) {
-    
-    CharacterVector result(n_cols_x);
-    result(0) = "(Intercept)";
-    
-    for (int i = 1; i < n_cols_x; i++) {
+    if (intercept) {
+
+      result(0) = "(Intercept)";
       
-      result[i] = "x";
-      result[i] += i;
+      std::copy(dimnames_cols.begin(), dimnames_cols.end(), result.begin() + 1);
       
+      return List::create(input[0], result);
+      
+    } else {
+      return List::create(input[0], dimnames_cols);
     }
-    
-    return List::create(R_NilValue, result);
     
   } else {
     
-    CharacterVector result(n_cols_x);
-    
-    for (int i = 0; i < n_cols_x; i++) {
+    if (intercept) {
       
-      result[i] = "x";
-      result[i] += i + 1;
+      result(0) = "(Intercept)";
+      
+      for (int i = 1; i < n_cols_x; i++) {
+        
+        result[i] = "x";
+        result[i] += i;
+        
+      }
+      
+      return List::create(R_NilValue, result);
+      
+    } else {
+      
+      for (int i = 0; i < n_cols_x; i++) {
+        
+        result[i] = "x";
+        result[i] += i + 1;
+        
+      }
+      
+      return List::create(R_NilValue, result);
       
     }
-    
-    return List::create(R_NilValue, result);
     
   }
   
@@ -162,13 +173,11 @@ arma::uvec any_na_x(const NumericMatrix& x) {
   for (int i = 0; i < n_rows_x; i++) {
     
     int any_na = 0;
-    int j = 0;
     
-    while ((any_na == 0) && (j < n_cols_x)) {
+    for (int j = 0; (j < n_cols_x) && (any_na == 0); j++) {
       if (std::isnan(x(i, j))) {
         any_na = 1;
       }
-      j += 1;
     }
     
     result[i] = any_na;
@@ -177,7 +186,7 @@ arma::uvec any_na_x(const NumericMatrix& x) {
   
   return result;
   
-} 
+}
 
 List roll_lm_z(const SEXP& x, const NumericVector& y,
                const int& width, const arma::vec& weights,
@@ -385,17 +394,17 @@ List roll_lm_z(const SEXP& x, const NumericVector& y,
   
 }
 
-int factorial(int n) {
+// long double factorial(int n) {
   
-  int result = 1;
+//   long double result = 1;
   
-  for (int i = 2; i <= n; i++) {
-    result *= i;
-  }
+//   for (int i = 2; i <= n; i++) {
+//     result *= i;
+//   }
   
-  return result;
+//   return result;
   
-}
+// }
 
 // [[Rcpp::export(.roll_shap)]]
 SEXP roll_shap(const SEXP& x, const SEXP& y,
@@ -414,76 +423,115 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
     int n_cols_y = yy.ncol();
-    int n_combn = pow((long double)2.0, n_cols_x);
+    int n_combn = 1 << n_cols_x; // 2 ^ n_cols_x
+    int n_combn_half = n_combn / 2;
     arma::mat arma_x = arma::mat(xx.begin(), n_rows_xy, n_cols_x);
     arma::ivec arma_n(n_combn);
-    arma::umat arma_ix(n_cols_x, n_combn);
-    arma::mat arma_rsq(n_rows_xy, n_combn);
-    arma::mat arma_rsq_sum(n_rows_xy, n_cols_x);
+    arma::umat arma_ix(n_cols_x, n_combn, arma::fill::zeros);
+    arma::mat arma_rsq(n_rows_xy, n_combn, arma::fill::zeros);
+    arma::mat arma_rsq_sum(n_rows_xy, n_cols_x, arma::fill::zeros);
     List result_rsq(n_cols_y);
     List result_z(3);
     
-    // create a list of matrices,
-    // otherwise a list of lists
-    if (n_cols_y == 1) {
+    // check 'n_cols' variable for errors
+    check_n_cols(n_cols_x);
+
+    // number of binary combinations
+    for (int k = 0; k < n_combn; k++) {
       
-      // number of binary combinations
-      for (int k = 0; k < n_combn; k++) {
+      n = 0;
+      n_size = k;
+      
+      // find the binary combination
+      for (int j = 0; j < n_cols_x; j++) {
         
-        n = 0;
-        n_size = k;
-        
-        // find the binary combination
-        for (int j = 0; j < n_cols_x; j++) {
+        if (n_size % 2 == 1) {
           
-          if (n_size % 2 == 0) {
-            
-            n += 1;
-            
-            arma_ix(j, k) = j + 1;
-            
-          }
+          n += 1;
           
-          n_size /= 2;
+          arma_ix(j, k) = j + 1;
           
         }
         
-        arma_n[k] = n;
+        n_size /= 2;
         
-        if (n > 0) {
+      }
+      
+      arma_n[k] = n;
+
+    }
+    
+    arma::field<arma::uvec> arma_subset(n_combn);
+
+    for (int k = 0; k < n_combn; k++) {
+      if (arma_n[k] > 0) {
+        arma_subset(k) = arma::find(arma_ix.col(k) != 0);
+      } else {
+        arma_subset(k).reset();
+      }
+    }
+
+    arma::vec arma_weights(n_cols_x);
+
+    arma_weights[0] = 1.0 / n_cols_x;
+
+    for (int j = 0; j < n_cols_x - 1; j++) {
+      arma_weights[j + 1] = arma_weights[j] * (j + 1) / (n_cols_x - (j + 1));
+    }
+
+    arma::field<arma::uvec> arma_ix_pos(n_cols_x);
+    arma::field<arma::uvec> arma_ix_neg(n_cols_x);
+    arma::field<arma::ivec> arma_ix_n(n_cols_x);
+
+    for (int j = 0; j < n_cols_x; j++) {
+
+      arma_ix_pos(j) = arma::find(arma_ix.row(j) != 0);
+      arma_ix_neg(j) = arma::find(arma_ix.row(j) == 0);
+      arma_ix_n(j) = arma_n(arma_ix_neg(j));
+
+    }
+
+    // create a list of matrices,
+    // otherwise a list of lists
+    if (n_cols_y == 1) {
+
+      arma_rsq.zeros();
+      arma_rsq_sum.zeros();
+
+      for (int k = 0; k < n_combn; k++) {
+
+        if (arma_n[k] > 0) {
           
-          arma::uvec arma_ix_subset = find(arma_ix.col(k));
+          const arma::uvec& arma_ix_subset = arma_subset(k);
           arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
           NumericMatrix x_subset(wrap(arma_x_subset));
           
           result_z = roll_lm_z(x_subset, yy(_, 0), width,
-                               weights, intercept, min_obs,
-                               complete_obs, na_restore,
-                               online);
+                                weights, intercept, min_obs,
+                                complete_obs, na_restore,
+                                online);
           
           arma::mat arma_rsq_z = result_z["r.squared"];
           arma_rsq.col(k) = arma_rsq_z;
           
         }
-        
+
       }
-      
+        
       // calculate the exact Shapley value for r-squared
       for (int j = 0; j < n_cols_x; j++) {
         
-        arma::uvec arma_ix_pos = find(arma_ix.row(j));
-        arma::uvec arma_ix_neg = find(arma_ix.row(j) == 0);
-        arma::ivec arma_ix_n = arma_n(arma_ix_neg);
-        arma::mat arma_rsq_diff = arma_rsq.cols(arma_ix_pos) - arma_rsq.cols(arma_ix_neg);
-        
-        for (int k = 0; k < n_combn / 2; k++) {
+        const arma::uvec& arma_ix_pos_j = arma_ix_pos(j);
+        const arma::uvec& arma_ix_neg_j = arma_ix_neg(j);
+        const arma::ivec& arma_ix_n_j = arma_ix_n(j);
+
+        for (int k = 0; k < n_combn_half; k++) {
           
-          int s = arma_ix_n[k];
-          long double weight = (factorial(s) * factorial(n_cols_x - s - 1)) /
-            (long double)factorial(n_cols_x);
+          const int s = (int)arma_ix_n_j[k];
           
-          arma_rsq_sum.col(j) += weight * arma_rsq_diff.col(k);
-          
+          arma_rsq_sum.col(j) += arma_weights[s] * 
+            (arma_rsq.col(arma_ix_pos_j[k]) - arma_rsq.col(arma_ix_neg_j[k]));
+
         }
         
       }
@@ -504,63 +552,43 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     } else {
       
       for (int z = 0; z < n_cols_y; z++) {
-        
-        // number of binary combinations
+
+        arma_rsq.zeros();
+        arma_rsq_sum.zeros();
+
         for (int k = 0; k < n_combn; k++) {
-          
-          n = 0;
-          n_size = k;
-          
-          // find the binary combination
-          for (int j = 0; j < n_cols_x; j++) {
-            
-            if (n_size % 2 == 0) {
-              
-              n += 1;
-              
-              arma_ix(j, k) = j + 1;
-              
-            }
-            
-            n_size /= 2;
-            
-          }
-          
-          arma_n[k] = n;
-          
-          if (n > 0) {
-            
-            arma::uvec arma_ix_subset = find(arma_ix.col(k));
+
+          if (arma_n[k] > 0) {
+
+            const arma::uvec& arma_ix_subset = arma_subset(k);
             arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
             NumericMatrix x_subset(wrap(arma_x_subset));
-            
+
             result_z = roll_lm_z(x_subset, yy(_, z), width,
-                                 weights, intercept, min_obs,
-                                 complete_obs, na_restore,
-                                 online);
-            
+                                weights, intercept, min_obs,
+                                complete_obs, na_restore,
+                                online);
+
             arma::mat arma_rsq_z = result_z["r.squared"];
             arma_rsq.col(k) = arma_rsq_z;
-            
+
           }
-          
+
         }
         
         // calculate the exact Shapley value for r-squared
         for (int j = 0; j < n_cols_x; j++) {
+
+          const arma::uvec& arma_ix_pos_j = arma_ix_pos(j);
+          const arma::uvec& arma_ix_neg_j = arma_ix_neg(j);
+          const arma::ivec& arma_ix_n_j = arma_ix_n(j);
           
-          arma::uvec arma_ix_pos = find(arma_ix.row(j));
-          arma::uvec arma_ix_neg = find(arma_ix.row(j) == 0);
-          arma::ivec arma_ix_n = arma_n(arma_ix_neg);
-          arma::mat arma_rsq_diff = arma_rsq.cols(arma_ix_pos) - arma_rsq.cols(arma_ix_neg);
-          
-          for (int k = 0; k < n_combn / 2; k++) {
+          for (int k = 0; k < n_combn_half; k++) {
             
-            int s = arma_ix_n[k];
-            long double weight = (factorial(s) * factorial(n_cols_x - s - 1)) /
-              (long double)factorial(n_cols_x);
-            
-            arma_rsq_sum.col(j) += weight * arma_rsq_diff.col(k);
+            const int s = (int)arma_ix_n_j[k];
+
+            arma_rsq_sum.col(j) += arma_weights[s] *
+              (arma_rsq.col(arma_ix_pos_j[k]) - arma_rsq.col(arma_ix_neg_j[k]));
             
           }
           
@@ -598,14 +626,18 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     int n_size = 0;
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
-    int n_combn = pow((long double)2.0, n_cols_x);
+    int n_combn = 1 << n_cols_x; // 2 ^ n_cols_x
+    int n_combn_half = n_combn / 2;
     arma::mat arma_x = arma::mat(xx.begin(), n_rows_xy, n_cols_x);
     arma::ivec arma_n(n_combn);
-    arma::umat arma_ix(n_cols_x, n_combn);
-    arma::mat arma_rsq(n_rows_xy, n_combn);
-    arma::mat arma_rsq_sum(n_rows_xy, n_cols_x);
+    arma::umat arma_ix(n_cols_x, n_combn, arma::fill::zeros);
+    arma::mat arma_rsq(n_rows_xy, n_combn, arma::fill::zeros);
+    arma::mat arma_rsq_sum(n_rows_xy, n_cols_x, arma::fill::zeros);
     List result_rsq(1);
     List result_z(3);
+
+    // check 'n_cols' variable for errors
+    check_n_cols(n_cols_x);
     
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
@@ -616,7 +648,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       // find the binary combination
       for (int j = 0; j < n_cols_x; j++) {
         
-        if (n_size % 2 == 0) {
+        if (n_size % 2 == 1) {
           
           n += 1;
           
@@ -630,9 +662,47 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       
       arma_n[k] = n;
       
-      if (n > 0) {
+    }
+
+    arma::field<arma::uvec> arma_subset(n_combn);
+
+    for (int k = 0; k < n_combn; k++) {
+      if (arma_n[k] > 0) {
+        arma_subset(k) = arma::find(arma_ix.col(k) != 0);
+      } else {
+        arma_subset(k).reset();
+      }
+    }
+
+    arma::vec arma_weights(n_cols_x);
+
+    arma_weights[0] = 1.0 / n_cols_x;
+
+    for (int j = 0; j < n_cols_x - 1; j++) {
+      arma_weights[j + 1] = arma_weights[j] * (j + 1) / (n_cols_x - (j + 1));
+    }
+
+    arma::field<arma::uvec> arma_ix_pos(n_cols_x);
+    arma::field<arma::uvec> arma_ix_neg(n_cols_x);
+    arma::field<arma::ivec> arma_ix_n(n_cols_x);
+
+    for (int j = 0; j < n_cols_x; j++) {
+
+      arma_ix_pos(j) = arma::find(arma_ix.row(j) != 0);
+      arma_ix_neg(j) = arma::find(arma_ix.row(j) == 0);
+      arma_ix_n(j) = arma_n(arma_ix_neg(j));
+      
+    }
+
+    arma_rsq.zeros();
+    arma_rsq_sum.zeros();
+
+    // number of binary combinations
+    for (int k = 0; k < n_combn; k++) {
+      
+      if (arma_n[k] > 0) {
         
-        arma::uvec arma_ix_subset = find(arma_ix.col(k));
+        const arma::uvec& arma_ix_subset = arma_subset(k);
         arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
         NumericMatrix x_subset(wrap(arma_x_subset));
         
@@ -651,18 +721,16 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     // calculate the exact Shapley value for r-squared
     for (int j = 0; j < n_cols_x; j++) {
       
-      arma::uvec arma_ix_pos = find(arma_ix.row(j));
-      arma::uvec arma_ix_neg = find(arma_ix.row(j) == 0);
-      arma::ivec arma_ix_n = arma_n(arma_ix_neg);
-      arma::mat arma_rsq_diff = arma_rsq.cols(arma_ix_pos) - arma_rsq.cols(arma_ix_neg);
+      const arma::uvec& arma_ix_pos_j = arma_ix_pos(j);
+      const arma::uvec& arma_ix_neg_j = arma_ix_neg(j);
+      const arma::ivec& arma_ix_n_j = arma_ix_n(j);
       
-      for (int k = 0; k < n_combn / 2; k++) {
+      for (int k = 0; k < n_combn_half; k++) {
         
-        int s = arma_ix_n[k];
-        long double weight = (factorial(s) * factorial(n_cols_x - s - 1)) /
-          (long double)factorial(n_cols_x);
-        
-        arma_rsq_sum.col(j) += weight * arma_rsq_diff.col(k);
+        const int s = (int)arma_ix_n_j[k];
+
+        arma_rsq_sum.col(j) += arma_weights[s] *
+          (arma_rsq.col(arma_ix_pos_j[k]) - arma_rsq.col(arma_ix_neg_j[k]));
         
       }
       
@@ -692,6 +760,9 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     int n_cols_y = yy.ncol();
     List result_rsq(n_cols_y);
     List result_z(3);
+
+    // // check 'n_cols' variable for errors
+    // check_n_cols(n_cols_x);
     
     // create a list of matrices,
     // otherwise a list of lists
@@ -763,6 +834,9 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     int n_cols_y = 1;
     List result_rsq(n_cols_y);
     List result_z(3);
+
+    // // check 'n_cols' variable for errors
+    // check_n_cols(n_cols_x);
     
     // create a list of matrices
     result_z = roll_lm_z(xx, yy, width,
