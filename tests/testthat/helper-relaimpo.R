@@ -22,7 +22,7 @@ dimnames_lm_x <- function(dimnames, n_cols_x, intercept) {
   
 }
 
-rollapplyr_relimp <- function(x, y, width, intercept) {
+rollapplyr_relimp <- function(x, y, width, weights, intercept) {
   
   if (is.matrix(x) || is.matrix(y) || intercept) {
     
@@ -73,15 +73,18 @@ rollapplyr_relimp <- function(x, y, width, intercept) {
       
       x_subset <- x[max(1, i - width + 1):i, , drop = FALSE]
       y_subset <- y[max(1, i - width + 1):i, , drop = FALSE]
+      weights_subset <- tail(weights, min(i, width))
       data <- as.data.frame(cbind(y_subset, x_subset))
       
       if (intercept) {
         
         # "Unparseable 'response'; use is deprecated.  Use as.name(.) or `..`!"
-        fit <- lm(reformulate(termlabels = ".", response = as.name(names(data)[1])), data = data)
+        fit <- lm(reformulate(termlabels = ".", response = as.name(names(data)[1])),
+                  weights = weights_subset, data = data)
         
       } else {
-        fit <- lm(reformulate(termlabels = ".-1", response = as.name(names(data)[1])), data = data)
+        fit <- lm(reformulate(termlabels = ".-1", response = as.name(names(data)[1])),
+                  weights = weights_subset, data = data)
       }
 
       summary_fit <- summary(fit)

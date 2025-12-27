@@ -23,7 +23,8 @@ test_that("equivalent to relaimpo::calc.relimp", {
     for (b in 1:length(test_width)) {
       
       width <- test_width[b]     
-      test_weights <- list(rep(1, width))
+      # test_weights <- list(rep(1, width))
+      test_weights <- list(lambda ^ (width:1))
 
       for (ay in 1:length(test_data_y)) {
         
@@ -35,7 +36,8 @@ test_that("equivalent to relaimpo::calc.relimp", {
         
         # relaimpo: "model must contain intercept"
         result2 <- rollapplyr_relimp(test_data_x[[ax]], test_data_y[[ay]],
-                                     width = width, test_intercept[1])
+                                     width = width, test_weights[[1]],
+                                     test_intercept[1])
         
         # relaimpo: uses n > p + 1 instead of n >= p + 1
         # relaimpo: requires at least one degree of freedom for error term

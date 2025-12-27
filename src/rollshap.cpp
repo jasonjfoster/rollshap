@@ -88,59 +88,6 @@ void check_lm(const int& n_rows_x, const int& n_rows_y) {
   
 }
 
-List dimnames_lm_x(const List& input, const int& n_cols_x,
-                   const bool& intercept) {
-  
-  CharacterVector result(n_cols_x);
-  
-  if (input.size() > 1) {
-    
-    CharacterVector dimnames_cols = input[1];
-    
-    if (intercept) {
-
-      result(0) = "(Intercept)";
-      
-      std::copy(dimnames_cols.begin(), dimnames_cols.end(), result.begin() + 1);
-      
-      return List::create(input[0], result);
-      
-    } else {
-      return List::create(input[0], dimnames_cols);
-    }
-    
-  } else {
-    
-    if (intercept) {
-      
-      result(0) = "(Intercept)";
-      
-      for (int i = 1; i < n_cols_x; i++) {
-        
-        result[i] = "x";
-        result[i] += i;
-        
-      }
-      
-      return List::create(R_NilValue, result);
-      
-    } else {
-      
-      for (int i = 0; i < n_cols_x; i++) {
-        
-        result[i] = "x";
-        result[i] += i + 1;
-        
-      }
-      
-      return List::create(R_NilValue, result);
-      
-    }
-    
-  }
-  
-}
-
 CharacterVector dimnames_lm_y(const List& input, const int& n_cols_y) {
   
   if (input.size() > 1) {
