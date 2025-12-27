@@ -1,6 +1,7 @@
 # rollshap
 
 [![](https://github.com/jasonjfoster/rollshap/actions/workflows/check-standard.yaml/badge.svg)](https://github.com/jasonjfoster/rollshap/actions/workflows/check-standard.yaml)
+[![](https://codecov.io/gh/jasonjfoster/rollshap/graph/badge.svg)](https://app.codecov.io/github/jasonjfoster/rollshap)
 
 ## Overview
 
