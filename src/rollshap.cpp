@@ -365,8 +365,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     NumericMatrix xx(x);
     NumericMatrix yy(y);
     
-    int n = 0;
-    int n_size = 0;
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
     int n_cols_y = yy.ncol();
@@ -379,29 +377,24 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     arma::mat arma_rsq_sum(n_rows_xy, n_cols_x, arma::fill::zeros);
     List result_rsq(n_cols_y);
     List result_z(3);
-    
+
     // check 'n_cols' variable for errors
     check_n_cols(n_cols_x);
 
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
-      
-      n = 0;
-      n_size = k;
-      
+
+      int n = 0;
+
       // find the binary combination
       for (int j = 0; j < n_cols_x; j++) {
-        
-        if (n_size % 2 == 1) {
-          
-          n += 1;
+        if (k & (1 << j)) {
           
           arma_ix(j, k) = j + 1;
+
+          n += 1;
           
         }
-        
-        n_size /= 2;
-        
       }
       
       arma_n[k] = n;
@@ -413,8 +406,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     for (int k = 0; k < n_combn; k++) {
       if (arma_n[k] > 0) {
         arma_subset(k) = arma::find(arma_ix.col(k) != 0);
-      } else {
-        arma_subset(k).reset();
       }
     }
 
@@ -422,8 +413,8 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
 
     arma_weights[0] = 1.0 / n_cols_x;
 
-    for (int j = 0; j < n_cols_x - 1; j++) {
-      arma_weights[j + 1] = arma_weights[j] * (j + 1) / (n_cols_x - (j + 1));
+    for (int j = 1; j < n_cols_x; j++) {
+      arma_weights[j] = arma_weights[j - 1] * j / (n_cols_x - j);
     }
 
     arma::field<arma::uvec> arma_ix_pos(n_cols_x);
@@ -441,15 +432,10 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     // create a list of matrices,
     // otherwise a list of lists
     if (n_cols_y == 1) {
-
-      arma_rsq.zeros();
-      arma_rsq_sum.zeros();
-
       for (int k = 0; k < n_combn; k++) {
-
         if (arma_n[k] > 0) {
           
-          const arma::uvec& arma_ix_subset = arma_subset(k);
+          arma::uvec arma_ix_subset = arma_subset(k);
           arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
           NumericMatrix x_subset(wrap(arma_x_subset));
           
@@ -468,13 +454,13 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       // calculate the exact Shapley value for r-squared
       for (int j = 0; j < n_cols_x; j++) {
         
-        const arma::uvec& arma_ix_pos_j = arma_ix_pos(j);
-        const arma::uvec& arma_ix_neg_j = arma_ix_neg(j);
-        const arma::ivec& arma_ix_n_j = arma_ix_n(j);
+        arma::uvec arma_ix_pos_j = arma_ix_pos(j);
+        arma::uvec arma_ix_neg_j = arma_ix_neg(j);
+        arma::ivec arma_ix_n_j = arma_ix_n(j);
 
         for (int k = 0; k < n_combn_half; k++) {
           
-          const int s = (int)arma_ix_n_j[k];
+          int s = arma_ix_n_j[k];
           
           arma_rsq_sum.col(j) += arma_weights[s] * 
             (arma_rsq.col(arma_ix_pos_j[k]) - arma_rsq.col(arma_ix_neg_j[k]));
@@ -507,7 +493,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
 
           if (arma_n[k] > 0) {
 
-            const arma::uvec& arma_ix_subset = arma_subset(k);
+            arma::uvec arma_ix_subset = arma_subset(k);
             arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
             NumericMatrix x_subset(wrap(arma_x_subset));
 
@@ -526,13 +512,13 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
         // calculate the exact Shapley value for r-squared
         for (int j = 0; j < n_cols_x; j++) {
 
-          const arma::uvec& arma_ix_pos_j = arma_ix_pos(j);
-          const arma::uvec& arma_ix_neg_j = arma_ix_neg(j);
-          const arma::ivec& arma_ix_n_j = arma_ix_n(j);
+          arma::uvec arma_ix_pos_j = arma_ix_pos(j);
+          arma::uvec arma_ix_neg_j = arma_ix_neg(j);
+          arma::ivec arma_ix_n_j = arma_ix_n(j);
           
           for (int k = 0; k < n_combn_half; k++) {
             
-            const int s = (int)arma_ix_n_j[k];
+            int s = arma_ix_n_j[k];
 
             arma_rsq_sum.col(j) += arma_weights[s] *
               (arma_rsq.col(arma_ix_pos_j[k]) - arma_rsq.col(arma_ix_neg_j[k]));
@@ -569,8 +555,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     NumericMatrix xx(x);
     NumericVector yy(y);
     
-    int n = 0;
-    int n_size = 0;
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
     int n_combn = 1 << n_cols_x; // 2 ^ n_cols_x
@@ -589,22 +573,17 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
       
-      n = 0;
-      n_size = k;
+      int n = 0;
       
       // find the binary combination
       for (int j = 0; j < n_cols_x; j++) {
-        
-        if (n_size % 2 == 1) {
-          
-          n += 1;
+        if (k & (1 << j)) {
           
           arma_ix(j, k) = j + 1;
+
+          n += 1;       
           
-        }
-        
-        n_size /= 2;
-        
+        }        
       }
       
       arma_n[k] = n;
@@ -616,8 +595,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     for (int k = 0; k < n_combn; k++) {
       if (arma_n[k] > 0) {
         arma_subset(k) = arma::find(arma_ix.col(k) != 0);
-      } else {
-        arma_subset(k).reset();
       }
     }
 
@@ -625,8 +602,8 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
 
     arma_weights[0] = 1.0 / n_cols_x;
 
-    for (int j = 0; j < n_cols_x - 1; j++) {
-      arma_weights[j + 1] = arma_weights[j] * (j + 1) / (n_cols_x - (j + 1));
+    for (int j = 1; j < n_cols_x; j++) {
+      arma_weights[j] = arma_weights[j - 1] * j / (n_cols_x - j);
     }
 
     arma::field<arma::uvec> arma_ix_pos(n_cols_x);
@@ -641,15 +618,12 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       
     }
 
-    arma_rsq.zeros();
-    arma_rsq_sum.zeros();
-
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
       
       if (arma_n[k] > 0) {
         
-        const arma::uvec& arma_ix_subset = arma_subset(k);
+        arma::uvec arma_ix_subset = arma_subset(k);
         arma::mat arma_x_subset = arma_x.cols(arma_ix_subset);
         NumericMatrix x_subset(wrap(arma_x_subset));
         
@@ -668,13 +642,13 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     // calculate the exact Shapley value for r-squared
     for (int j = 0; j < n_cols_x; j++) {
       
-      const arma::uvec& arma_ix_pos_j = arma_ix_pos(j);
-      const arma::uvec& arma_ix_neg_j = arma_ix_neg(j);
-      const arma::ivec& arma_ix_n_j = arma_ix_n(j);
+      arma::uvec arma_ix_pos_j = arma_ix_pos(j);
+      arma::uvec arma_ix_neg_j = arma_ix_neg(j);
+      arma::ivec arma_ix_n_j = arma_ix_n(j);
       
       for (int k = 0; k < n_combn_half; k++) {
         
-        const int s = (int)arma_ix_n_j[k];
+        int s = arma_ix_n_j[k];
 
         arma_rsq_sum.col(j) += arma_weights[s] *
           (arma_rsq.col(arma_ix_pos_j[k]) - arma_rsq.col(arma_ix_neg_j[k]));
