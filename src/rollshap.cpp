@@ -1,3 +1,5 @@
+#define ARMA_WARN_LEVEL 0
+
 #include <RcppArmadillo.h>
 #include <RcppParallel.h>
 #include <roll.h>
@@ -375,7 +377,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     arma::umat arma_ix(n_cols_x, n_combn, arma::fill::zeros);
     arma::mat arma_rsq(n_rows_xy, n_combn, arma::fill::zeros);
     arma::mat arma_rsq_sum(n_rows_xy, n_cols_x, arma::fill::zeros);
-    List result_rsq(n_cols_y);
     List result_z(3);
 
     // check 'n_cols' variable for errors
@@ -483,6 +484,8 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       return rsq;
       
     } else {
+
+      List result_rsq(n_cols_y);
       
       for (int z = 0; z < n_cols_y; z++) {
 
@@ -564,7 +567,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     arma::umat arma_ix(n_cols_x, n_combn, arma::fill::zeros);
     arma::mat arma_rsq(n_rows_xy, n_combn, arma::fill::zeros);
     arma::mat arma_rsq_sum(n_rows_xy, n_cols_x, arma::fill::zeros);
-    List result_rsq(1);
     List result_z(3);
 
     // check 'n_cols' variable for errors
@@ -679,7 +681,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     int n_rows_xy = xxx.nrow();
     // int n_cols_x = xxx.ncol();
     int n_cols_y = yy.ncol();
-    List result_rsq(n_cols_y);
     List result_z(3);
 
     // // check 'n_cols' variable for errors
@@ -711,6 +712,8 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       return rsq;
       
     } else {
+
+      List result_rsq(n_cols_y);
       
       for (int z = 0; z < n_cols_y; z++) {
         
@@ -752,8 +755,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     
     int n_rows_xy = xx.size();
     // int n_cols_x = 1;
-    int n_cols_y = 1;
-    List result_rsq(n_cols_y);
+    // int n_cols_y = 1;
     List result_z(3);
 
     // // check 'n_cols' variable for errors
