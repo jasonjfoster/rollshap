@@ -30,9 +30,7 @@ test_that("equivalent to relaimpo::calc.relimp", {
         
         result1 <- roll_shap(test_data_x[[ax]], test_data_y[[ay]],
                              width, test_weights[[1]],
-                             test_intercept[1], test_min_obs[1],
-                             test_complete_obs[1], test_na_restore[1],
-                             test_online[1])
+                             test_intercept[1], test_min_obs[1])
         
         # relaimpo: "model must contain intercept"
         result2 <- rollapplyr_relimp(test_data_x[[ax]], test_data_y[[ay]],
@@ -44,8 +42,9 @@ test_that("equivalent to relaimpo::calc.relimp", {
         # parameters to estimate: p + 1 (p features + 1 intercept)
         # observations used: n
         # degrees of freedom for error: n - (p + 1)
-        expect_equivalent(result1[n_vars:n_obs, , drop = FALSE],
-                          result2[n_vars:n_obs, , drop = FALSE])
+        expect_equal(result1[n_vars:n_obs, , drop = FALSE],
+                     result2[n_vars:n_obs, , drop = FALSE],
+                     check.attributes = FALSE)
         
       }
       

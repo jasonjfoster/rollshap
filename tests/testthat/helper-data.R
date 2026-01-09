@@ -5,12 +5,10 @@ n_size <- n_obs * n_vars
 lambda <- 0.9 # 0.9 # 1 / 0.9
 dates <- rev(seq(Sys.Date(), length.out = n_obs, by = "-1 day"))
 
+# test arguments
 test_width <- c(1, 5, 10, 15)
-test_intercept <- c(TRUE, FALSE)
-test_min_obs <- c(1, 5, 10, 15)
-test_complete_obs <- c(TRUE, FALSE)
-test_na_restore <- c(TRUE, FALSE)
-test_online <- c(TRUE, FALSE)
+test_intercept <- TRUE # relaimpo: "model must contain intercept"
+test_min_obs <- 1
 
 # test data
 test_ls <- list("random matrix with 0's" =
