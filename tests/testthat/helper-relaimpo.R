@@ -49,11 +49,11 @@ rollapplyr_relimp <- function(x, y, width, weights, intercept) {
     n_rows_xy <- nrow(x)
     n_cols_x <- ncol(x)
     
-    # if (intercept) {
-    #   n_cols_x <- n_cols_x + 1
-    # }
+    if (intercept) {
+      n_cols_x <- n_cols_x + 1
+    }
     
-    result <- matrix(as.numeric(NA), n_rows_xy, n_cols_x)
+    result <- matrix(as.numeric(NA), n_rows_xy, n_cols_x - 1)
     
     if (zoo::is.zoo(x)) {
       
@@ -80,28 +80,34 @@ rollapplyr_relimp <- function(x, y, width, weights, intercept) {
         
         # "Unparseable 'response'; use is deprecated.  Use as.name(.) or `..`!"
         fit <- lm(reformulate(termlabels = ".", response = as.name(names(data)[1])),
-                  weights = weights_subset, data = data)
+                              weights = weights_subset, data = data)
         
       } else {
         fit <- lm(reformulate(termlabels = ".-1", response = as.name(names(data)[1])),
-                  weights = weights_subset, data = data)
+                              weights = weights_subset, data = data)
       }
 
       summary_fit <- summary(fit)
-      summary_fit_coef <- coef(summary_fit)[ , "Estimate"]
-
-      if ((n_cols_x == 1) && (nrow(data) - (n_cols_x + 1) > 0)) { # summary_fit$df[2] > 0)
-
-        # relaimpo: relative importance equals r-squared for univariate case
-        fit_rsq <- summary_fit$r.squared
-        result[i] <- fit_rsq
-
-      } else if (nrow(data) - (n_cols_x + 1) > 0) {
-
-          fit_rsq <- tryCatch(relaimpo::calc.relimp(fit, type = "lmg", rela = FALSE)@lmg,
-                              error = function(x) NA)
+      summary_fit_coef <- coef(summary_fit)
+      df_fit <- n_cols_x
       
-          result[i, ] <- as.numeric(fit_rsq)
+      if (nrow(summary_fit_coef) == df_fit) {
+
+        var_y <- crossprod(y_subset)
+
+        if (!is.na(var_y) && (var_y > .Machine$double.eps)) {
+
+          # relaimpo: relative importance equals r-squared for univariate case
+          if (ncol(x) == 1) {
+            result[i] <- summary_fit$r.squared
+          } else {
+            
+            result[i, ] <- tryCatch(relaimpo::calc.relimp(fit, type = "lmg", rela = FALSE)@lmg,
+                                    error = function(x) NA)
+            
+          }
+
+        }
 
       }
 
@@ -111,73 +117,79 @@ rollapplyr_relimp <- function(x, y, width, weights, intercept) {
       attributes(result) <- x_attr
     }
     
-    attr(result, "dim") <- c(n_rows_xy, n_cols_x)
+    attr(result, "dim") <- c(n_rows_xy, n_cols_x - 1)
     
     x_dimnames <- dimnames(x)
     y_dimnames <- dimnames(y)
     
-    attr(result, "dimnames") <- dimnames_lm_x(x_dimnames, n_cols_x, FALSE) # exclude intercept
+    attr(result, "dimnames") <- dimnames_lm_x(x_dimnames, n_cols_x - 1, FALSE) # exclude intercept
   
+  } else {
+    
+    n_rows_xy <- length(x)
+    n_cols_x <- 1
+    
+    result <- rep(as.numeric(NA), n_rows_xy)
+    
+    if (zoo::is.zoo(x)) {
+
+      x_attr <- attributes(x)
+      x_attr[["dim"]] <- NULL
+      x_attr[["dimnames"]] <- NULL
+
+    } else if (zoo::is.zoo(y)) {
+
+      x_attr <- attributes(y)
+      x_attr[["dim"]] <- NULL
+      x_attr[["dimnames"]] <- NULL
+
+    }
+    
+    for (i in 1:n_rows_xy) {
+      
+      x_subset <- x[max(1, i - width + 1):i]
+      y_subset <- y[max(1, i - width + 1):i]
+      data <- as.data.frame(cbind(y_subset, x_subset))
+      
+      if (intercept) {
+        fit <- lm(reformulate(termlabels = ".", response = names(data)[1]),
+                              weights = weights_subset, data = data)
+      } else {
+        fit <- lm(reformulate(termlabels = ".-1", response = names(data)[1]),
+                              weights = weights_subset, data = data)
+      }
+
+      summary_fit <- summary(fit)
+      summary_fit_coef <- coef(summary_fit)
+      df_fit <- n_cols_x
+
+      if (nrow(summary_fit_coef) == df_fit) {
+
+        var_y <- crossprod(y_subset)
+
+        if (!is.na(var_y) && (var_y > .Machine$double.eps)) {
+
+          # relaimpo: relative importance equals r-squared for univariate case
+          if (ncol(x) == 1) {
+            result[i] <- summary_fit$r.squared
+          } else {
+            
+            result[i] <- tryCatch(relaimpo::calc.relimp(fit, type = "lmg", rela = FALSE)@lmg,
+                                  error = function(x) NA)
+            
+          }
+
+        }
+
+      }
+
+    }
+    
+    if (exists("x_attr")) {
+      attributes(result) <- x_attr
+    }
+    
   }
-  
-  # } else {
-    
-  #   n_rows_xy <- length(x)
-  #   n_cols_x <- 1
-    
-  #   result <- rep(as.numeric(NA), n_rows_xy)
-    
-  #   if (zoo::is.zoo(x)) {
-
-  #     x_attr <- attributes(x)
-  #     x_attr[["dim"]] <- NULL
-  #     x_attr[["dimnames"]] <- NULL
-
-  #   } else if (zoo::is.zoo(y)) {
-
-  #     x_attr <- attributes(y)
-  #     x_attr[["dim"]] <- NULL
-  #     x_attr[["dimnames"]] <- NULL
-
-  #   }
-    
-  #   for (i in 1:n_rows_xy) {
-      
-  #     x_subset <- x[max(1, i - width + 1):i]
-  #     y_subset <- y[max(1, i - width + 1):i]
-  #     data <- as.data.frame(cbind(y_subset, x_subset))
-      
-  #     if (intercept) {
-  #       fit <- lm(reformulate(termlabels = ".", response = names(data)[1]), data = data)
-  #     } else {
-  #       fit <- lm(reformulate(termlabels = ".-1", response = names(data)[1]), data = data)
-  #     }
-
-  #     summary_fit <- summary(fit)
-  #     summary_fit_coef <- coef(summary_fit)[ , "Estimate"]
-      
-  #     if ((n_cols_x == 1) && (nrow(data) - (n_cols_x + 1) > 0)) { # summary_fit$df[2] > 0)
-
-  #       # relaimpo: relative importance equals r-squared for univariate case
-  #       fit_rsq <- summary_fit$r.squared
-  #       result[i] <- fit_rsq
-
-  #     } else if (nrow(data) - (n_cols_x + 1) > 0) {
-
-  #         fit_rsq <- tryCatch(relaimpo::calc.relimp(fit, type = "lmg", rela = FALSE)@lmg,
-  #                             error = function(x) NA)
-      
-  #         result[i, ] <- as.numeric(fit_rsq)
-
-  #     }
-
-  #   }
-    
-  #   if (exists("x_attr")) {
-  #     attributes(result) <- x_attr
-  #   }
-    
-  # }
   
   return(result)
   
