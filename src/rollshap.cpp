@@ -8,10 +8,9 @@ using namespace RcppParallel;
 
 void check_n_cols(const int& n_cols) {
 
-  if (n_cols > 20) {
-    stop("value of 'n_cols' must be less than or equal to 20");
+  if ((n_cols < 1) || (n_cols > 20)) {
+    stop("value of 'n_cols' must be between one and 20");
   }
-
 
 }
 
