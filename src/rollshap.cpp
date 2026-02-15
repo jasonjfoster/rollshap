@@ -68,19 +68,19 @@ List roll_lm_z(const SEXP& x, const NumericVector& y,
     List result(3);
     
     // check 'x' and 'y' arguments for errors
-    check_rows_equal(n_rows_xy, y.size(), "x", "y");
+    rollshap::check_rows_equal(n_rows_xy, y.size(), "x", "y");
     
     // check 'width' argument for errors
-    check_pos_int(width, "width");
+    rollshap::check_pos_int(width, "width");
     
     // default 'weights' argument is equal-weighted,
     // otherwise check argument for errors
-    check_weights(n_rows_xy, width, weights, "'x' (and 'y')");
-    bool status = check_lambda(weights, n_rows_xy, width, online);
+    rollshap::check_weights(n_rows_xy, width, weights, "'x' (and 'y')");
+    bool status = rollshap::check_lambda(weights, n_rows_xy, width, online);
     
     // default 'min_obs' argument is 'width',
     // otherwise check argument for errors
-    check_pos_int(min_obs, "min_obs");
+    rollshap::check_pos_int(min_obs, "min_obs");
     
     // cbind x and y variables
     NumericMatrix data(n_rows_xy, n_cols_x);
@@ -166,19 +166,19 @@ List roll_lm_z(const SEXP& x, const NumericVector& y,
     List result(3);
     
     // check 'x' and 'y' arguments for errors
-    check_rows_equal(n_rows_xy, y.size(), "x", "y");
+    rollshap::check_rows_equal(n_rows_xy, y.size(), "x", "y");
     
     // check 'width' argument for errors
-    check_pos_int(width, "width");
+    rollshap::check_pos_int(width, "width");
     
     // default 'weights' argument is equal-weighted,
     // otherwise check argument for errors
-    check_weights(n_rows_xy, width, weights, "'x' (and 'y')");
-    bool status = check_lambda(weights, n_rows_xy, width, online);
+    rollshap::check_weights(n_rows_xy, width, weights, "'x' (and 'y')");
+    bool status = rollshap::check_lambda(weights, n_rows_xy, width, online);
     
     // default 'min_obs' argument is 'width',
     // otherwise check argument for errors
-    check_pos_int(min_obs, "min_obs");
+    rollshap::check_pos_int(min_obs, "min_obs");
     
     // cbind x and y variables
     NumericMatrix data(n_rows_xy, n_cols_x);
@@ -290,7 +290,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // check 'n_cols' variable for errors
-    check_bounds_int(n_cols_x, 1, 20, "n_cols");
+    rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
 
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
@@ -480,7 +480,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // check 'n_cols' variable for errors
-    check_bounds_int(n_cols_x, 1, 20, "n_cols");
+    rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
     
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
@@ -594,7 +594,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // // check 'n_cols' variable for errors
-    // check_bounds_int(n_cols_x, 1, 20, "n_cols");
+    // rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
     
     // create a list of matrices,
     // otherwise a list of lists
@@ -669,7 +669,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // // check 'n_cols' variable for errors
-    // check_bounds_int(n_cols_x, 1, 20, "n_cols");
+    // rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
     
     // create a list of matrices
     result_z = roll_lm_z(xx, yy, width,
