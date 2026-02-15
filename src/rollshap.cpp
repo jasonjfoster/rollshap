@@ -1,93 +1,4 @@
-#define ARMA_WARN_LEVEL 0
-
-#include <RcppArmadillo.h>
-#include <RcppParallel.h>
-#include <roll.h>
-using namespace Rcpp;
-using namespace RcppParallel;
-
-void check_n_cols(const int& n_cols) {
-
-  if ((n_cols < 1) || (n_cols > 20)) {
-    stop("value of 'n_cols' must be between one and 20");
-  }
-
-}
-
-void check_width(const int& width) {
-  
-  if (width < 1) {
-    stop("value of 'width' must be greater than zero");
-  }
-  
-}
-
-void check_weights_lm(const int& n_rows_xy, const int& width,
-                      const arma::vec& weights) {
-  
-  if ((int)weights.size() < std::min(width, n_rows_xy)) {
-    stop("length of 'weights' must be greater than or equal to the number of rows in 'x' (and 'y') or 'width'");
-  }
-  
-}
-
-bool check_lambda(const arma::vec& weights, const int& n_rows_x,
-                  const int& width, const bool& online) {
-  
-  // check if equal-weights
-  bool status_eq = all(weights == weights[0]);
-  bool status_exp = true;
-  
-  // check if exponential-weights
-  if (!status_eq) {
-    
-    int n = weights.size();
-    long double lambda = 0;
-    long double lambda_prev = 0;
-    
-    // check if constant ratio
-    for (int i = 0; (i < n - 1) && status_exp; i++) {
-      
-      // ratio of weights
-      lambda_prev = lambda;
-      lambda = weights[n - i - 2] / weights[n - i - 1];
-      
-      // tolerance for consistency with R's all.equal
-      if (((i > 0) && (std::abs(lambda - lambda_prev) > sqrt(arma::datum::eps))) ||
-          ((weights[n - i - 2] > weights[n - i - 1]) && (width < n_rows_x)) ||
-          (std::isnan(lambda) || (std::isinf(lambda)))) {
-        
-        status_exp = false;
-        
-      }
-      
-    }
-    
-  }
-  
-  if (!status_exp && online) {
-    warning("'online' is only supported for equal or exponential decay 'weights'");
-  }
-  
-  return status_exp;
-  
-}
-
-void check_min_obs(const int& min_obs) {
-  
-  if (min_obs < 1) {
-    stop("value of 'min_obs' must be greater than zero");
-  }
-  
-}
-
-void check_lm(const int& n_rows_x, const int& n_rows_y) {
-  
-  if (n_rows_x != n_rows_y) {
-    stop("number of rows in 'x' must equal the number of rows in 'y'");
-  }
-  
-}
+#include "rollshap.h"
 
 CharacterVector dimnames_lm_y(const List& input, const int& n_cols_y) {
   
@@ -157,19 +68,19 @@ List roll_lm_z(const SEXP& x, const NumericVector& y,
     List result(3);
     
     // check 'x' and 'y' arguments for errors
-    check_lm(n_rows_xy, y.size());
+    check_rows_equal(n_rows_xy, y.size(), "x", "y");
     
     // check 'width' argument for errors
-    check_width(width);
+    check_pos_int(width, "width");
     
     // default 'weights' argument is equal-weighted,
     // otherwise check argument for errors
-    check_weights_lm(n_rows_xy, width, weights);
+    check_weights(n_rows_xy, width, weights, "'x' (and 'y')");
     bool status = check_lambda(weights, n_rows_xy, width, online);
     
     // default 'min_obs' argument is 'width',
     // otherwise check argument for errors
-    check_min_obs(min_obs);
+    check_pos_int(min_obs, "min_obs");
     
     // cbind x and y variables
     NumericMatrix data(n_rows_xy, n_cols_x);
@@ -255,19 +166,19 @@ List roll_lm_z(const SEXP& x, const NumericVector& y,
     List result(3);
     
     // check 'x' and 'y' arguments for errors
-    check_lm(n_rows_xy, y.size());
+    check_rows_equal(n_rows_xy, y.size(), "x", "y");
     
     // check 'width' argument for errors
-    check_width(width);
+    check_pos_int(width, "width");
     
     // default 'weights' argument is equal-weighted,
     // otherwise check argument for errors
-    check_weights_lm(n_rows_xy, width, weights);
+    check_weights(n_rows_xy, width, weights, "'x' (and 'y')");
     bool status = check_lambda(weights, n_rows_xy, width, online);
     
     // default 'min_obs' argument is 'width',
     // otherwise check argument for errors
-    check_min_obs(min_obs);
+    check_pos_int(min_obs, "min_obs");
     
     // cbind x and y variables
     NumericMatrix data(n_rows_xy, n_cols_x);
@@ -379,7 +290,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // check 'n_cols' variable for errors
-    check_n_cols(n_cols_x);
+    check_bounds_int(n_cols_x, 1, 20, "n_cols");
 
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
@@ -569,7 +480,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // check 'n_cols' variable for errors
-    check_n_cols(n_cols_x);
+    check_bounds_int(n_cols_x, 1, 20, "n_cols");
     
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
@@ -683,7 +594,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // // check 'n_cols' variable for errors
-    // check_n_cols(n_cols_x);
+    // check_bounds_int(n_cols_x, 1, 20, "n_cols");
     
     // create a list of matrices,
     // otherwise a list of lists
@@ -758,7 +669,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     List result_z(3);
 
     // // check 'n_cols' variable for errors
-    // check_n_cols(n_cols_x);
+    // check_bounds_int(n_cols_x, 1, 20, "n_cols");
     
     // create a list of matrices
     result_z = roll_lm_z(xx, yy, width,
