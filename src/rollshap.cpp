@@ -382,14 +382,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       
       // create and return a matrix or xts object for Shapley values
       NumericMatrix rsq(wrap(arma_rsq_sum));
-      List dimnames_x = xx.attr("dimnames");
-      rsq.attr("dimnames") = dimnames_x;
-      rsq.attr("index") = xx.attr("index");
-      rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
-      rsq.attr(".indexTZ") = xx.attr(".indexTZ");
-      rsq.attr("tclass") = xx.attr("tclass");
-      rsq.attr("tzone") = xx.attr("tzone");
-      rsq.attr("class") = xx.attr("class");
+      rollshap::xts_attr(rsq, xx);
       
       return rsq;
       
@@ -442,14 +435,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
         
         // create and return a matrix or xts object for Shapley values
         NumericMatrix rsq(wrap(arma_rsq_sum));
-        List dimnames_x = xx.attr("dimnames");
-        rsq.attr("dimnames") = dimnames_x;
-        rsq.attr("index") = xx.attr("index");
-        rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
-        rsq.attr(".indexTZ") = xx.attr(".indexTZ");
-        rsq.attr("tclass") = xx.attr("tclass");
-        rsq.attr("tzone") = xx.attr("tzone");
-        rsq.attr("class") = xx.attr("class");
+        rollshap::xts_attr(rsq, xx);
         
         result_rsq(z) = rsq;
         
@@ -571,14 +557,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     
     // create and return a matrix or xts object for Shapley values
     NumericMatrix rsq(wrap(arma_rsq_sum));
-    List dimnames_x = xx.attr("dimnames");
-    rsq.attr("dimnames") = dimnames_x;
-    rsq.attr("index") = xx.attr("index");
-    rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
-    rsq.attr(".indexTZ") = xx.attr(".indexTZ");
-    rsq.attr("tclass") = xx.attr("tclass");
-    rsq.attr("tzone") = xx.attr("tzone");
-    rsq.attr("class") = xx.attr("class");
+    rollshap::xts_attr(rsq, xx);
     
     return rsq;
     
@@ -611,13 +590,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       NumericVector rsq(wrap(arma_rsq_z));
       rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
       List dimnames_x = xx.attr("dimnames");
-      rsq.attr("dimnames") = dimnames_x;
-      rsq.attr("index") = yy.attr("index");
-      rsq.attr(".indexCLASS") = yy.attr(".indexCLASS");
-      rsq.attr(".indexTZ") = yy.attr(".indexTZ");
-      rsq.attr("tclass") = yy.attr("tclass");
-      rsq.attr("tzone") = yy.attr("tzone");
-      rsq.attr("class") = yy.attr("class");
+      rollshap::xts_attr(rsq, yy, dimnames_x);
       
       return rsq;
       
@@ -638,13 +611,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
         NumericVector rsq(wrap(arma_rsq_z));
         rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
         List dimnames_x = xx.attr("dimnames");
-        rsq.attr("dimnames") = dimnames_x;
-        rsq.attr("index") = yy.attr("index");
-        rsq.attr(".indexCLASS") = yy.attr(".indexCLASS");
-        rsq.attr(".indexTZ") = yy.attr(".indexTZ");
-        rsq.attr("tclass") = yy.attr("tclass");
-        rsq.attr("tzone") = yy.attr("tzone");
-        rsq.attr("class") = yy.attr("class");
+        rollshap::xts_attr(rsq, yy, dimnames_x);
         
         result_rsq(z) = rsq;
         
@@ -685,13 +652,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       NumericVector rsq(wrap(arma_rsq_z));
       rsq.attr("dim") = IntegerVector::create(n_rows_xy, 1);
       List dimnames_x = xx.attr("dimnames");
-      rsq.attr("dimnames") = dimnames_x;
-      rsq.attr("index") = xx.attr("index");
-      rsq.attr(".indexCLASS") = xx.attr(".indexCLASS");
-      rsq.attr(".indexTZ") = xx.attr(".indexTZ");
-      rsq.attr("tclass") = xx.attr("tclass");
-      rsq.attr("tzone") = xx.attr("tzone");
-      rsq.attr("class") = xx.attr("class");
+      rollshap::xts_attr(rsq, xx, dimnames_x);
       
       return rsq;
       
@@ -699,13 +660,7 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
       
       // create and return a vector object for Shapley values
       NumericVector rsq(wrap(arma_rsq_z));
-      rsq.attr("dim") = R_NilValue;
-      List names = xx.attr("names");
-      if (names.size() > 0) {
-        rsq.attr("names") = names;
-      }
-      rsq.attr("index") = xx.attr("index");
-      rsq.attr("class") = xx.attr("class");
+      rollshap::vec_attr(rsq, xx);
       
       return rsq;
       

@@ -3,5 +3,6 @@
 
 #include <roll.h>
 #include "rollshap_check.h"
+#include "rollshap_attr.h"
 
 #endif

@@ -1,3 +1,5 @@
+// todo (roll >= 1.2.1): use namespace roll except for check_bounds_int
+
 #ifndef ROLLSHAP_CHECK_H
 #define ROLLSHAP_CHECK_H
 
@@ -46,7 +48,7 @@ inline void check_weights(const int& n_rows, const int& width,
 
 }
 
-// lambda check for online algorithm support (returns bool for control flow)
+// lambda check for online algorithm (returns bool)
 inline bool check_lambda(const arma::vec& weights, const int& n_rows_x,
                   const int& width, const bool& online) {
   
