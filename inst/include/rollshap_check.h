@@ -52,6 +52,11 @@ inline void check_weights(const int& n_rows, const int& width,
 inline bool check_lambda(const arma::vec& weights, const int& n_rows_x,
                          const int& width, const bool& online) {
   
+  // check if empty
+  if (weights.is_empty()) {
+    return true;
+  }
+
   // check if equal-weights
   bool status_eq = all(weights == weights[0]);
   bool status_exp = true;
