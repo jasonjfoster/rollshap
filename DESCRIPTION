@@ -12,7 +12,7 @@ Depends: R (>= 3.0.2)
 Imports: Rcpp, RcppParallel
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, roll (>= 1.1.7)
 SystemRequirements: GNU make
-Roxygen: list(old_usage = TRUE)
-RoxygenNote: 7.3.3
 Encoding: UTF-8
 Suggests: covr, testthat, zoo, relaimpo, roll
+Config/roxygen2/old_usage: TRUE
+Config/roxygen2/version: 7.3.3.9000
