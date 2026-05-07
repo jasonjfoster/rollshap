@@ -1,7 +1,7 @@
 Package: rollshap
 Type: Package
 Title: Rolling Shapley Values
-Version: 1.0
+Version: 1.0.0
 Authors@R: person("Jason", "Foster", , "jason.j.foster@gmail.com", c("aut", "cre"))
 Description: Analytical computation of rolling Shapley values for time-series data.
 License: GPL (>= 2)
