@@ -2,7 +2,6 @@ Package: rollshap
 Type: Package
 Title: Rolling Shapley Values
 Version: 1.0
-Date: YYYY-MM-DD
 Authors@R: person("Jason", "Foster", , "jason.j.foster@gmail.com", c("aut", "cre"))
 Description: Analytical computation of rolling Shapley values for time-series data.
 License: GPL (>= 2)
@@ -15,4 +14,4 @@ SystemRequirements: GNU make
 Encoding: UTF-8
 Suggests: covr, testthat, zoo, relaimpo, roll
 Config/roxygen2/old_usage: TRUE
-Config/roxygen2/version: 7.3.3.9000
+Config/roxygen2/version: 8.0.0
