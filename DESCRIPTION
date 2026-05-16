@@ -1,9 +1,9 @@
 Package: rollshap
 Type: Package
 Title: Rolling Shapley Values
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: person("Jason", "Foster", , "jason.j.foster@gmail.com", c("aut", "cre"))
-Description: Analytical computation of rolling Shapley values for time-series data.
+Description: Analytical computation of rolling and expanding Shapley values for time-series data. The 'rollshap' package decomposes the coefficient of determination (R-squared) of a linear regression into nonnegative contributions from each explanatory variable using the Shapley value from cooperative game theory (Shapley, 1953, <doi:10.1515/9781400881970-018>). For each window, the exact Shapley value is computed by fitting all subsets of the explanatory variables and averaging the marginal contribution to R-squared across all orderings, which returns an order-invariant attribution that sums to the full-model R-squared. Use cases include variable importance, factor attribution, and feature selection in time-series regression. The package supports rolling and expanding windows, weights, and handling of missing values via 'min_obs', 'complete_obs', and 'na_restore' arguments. The implementation uses the online and offline algorithms from the 'roll' package to compute rolling and expanding cross-products efficiently with parallelism across columns and windows provided by 'RcppParallel'.
 License: GPL (>= 2)
 URL: https://github.com/jasonjfoster/rollshap
 BugReports: https://github.com/jasonjfoster/rollshap/issues
