@@ -1,7 +1,9 @@
 # rollshap
 
 [![](https://github.com/jasonjfoster/rollshap/actions/workflows/check-standard.yaml/badge.svg)](https://github.com/jasonjfoster/rollshap/actions/workflows/check-standard.yaml)
+[![](https://www.r-pkg.org/badges/version/rollshap)](https://cran.r-project.org/package=rollshap)
 [![](https://codecov.io/gh/jasonjfoster/rollshap/graph/badge.svg)](https://app.codecov.io/github/jasonjfoster/rollshap)
+[![](https://cranlogs.r-pkg.org/badges/rollshap?color=brightgreen)](https://www.r-pkg.org/pkg/rollshap)
 
 ## Overview
 
@@ -13,7 +15,7 @@ The 'rollshap' package decomposes the coefficient of determination (R-squared) o
 * **Factor attribution**: quantifying the contribution of each factor to a model's fit through time
 * **Feature selection**: identifying variables whose marginal contribution is persistent or transient
 
-The package supports rolling and expanding windows, weights, and handling of missing values via 'min_obs', 'complete_obs', and 'na_restore' arguments. The implementation uses the online and offline algorithms from the 'roll' package to compute rolling and expanding cross-products efficiently with parallelism across columns and windows provided by 'RcppParallel'.
+The package supports rolling and expanding windows, weights, and handling of missing values via min_obs, complete_obs, and na_restore arguments. The implementation uses the online and offline algorithms from the 'roll' package to compute rolling and expanding cross-products efficiently with parallelism across columns and windows provided by 'RcppParallel'.
 
 ## Installation
 
