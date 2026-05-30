@@ -7,7 +7,7 @@
 
 ## Overview
 
-'rollshap' is a package that provides analytical computation of rolling and expanding Shapley values for time-series data.
+'rollshap' provides analytical computation of rolling and expanding Shapley values for time-series data.
 
 The 'rollshap' package decomposes the coefficient of determination (R-squared) of a linear regression into nonnegative contributions from each explanatory variable using the Shapley value from cooperative game theory (Shapley, 1953, <doi:10.1515/9781400881970-018>). For each window, the exact Shapley value is computed by fitting all subsets of the explanatory variables and averaging the marginal contribution to R-squared across all orderings, which returns an order-invariant attribution that sums to the full-model R-squared. Use cases include:
 
@@ -15,7 +15,7 @@ The 'rollshap' package decomposes the coefficient of determination (R-squared) o
 * **Factor attribution**: quantifying the contribution of each factor to a model's fit through time
 * **Feature selection**: identifying variables whose marginal contribution is persistent or transient
 
-The package supports rolling and expanding windows, weights, and handling of missing values via min_obs, complete_obs, and na_restore arguments. The implementation uses the online and offline algorithms from the 'roll' package to compute rolling and expanding cross-products efficiently with parallelism across columns and windows provided by 'RcppParallel'.
+The package supports rolling and expanding windows, weights, and handling of missing values via the min_obs, complete_obs, and na_restore arguments. The implementation uses the online and offline algorithms from the 'roll' package to compute rolling and expanding cross-products efficiently, with parallelism across columns and windows provided by 'RcppParallel'.
 
 ## Installation
 
@@ -39,7 +39,7 @@ x <- matrix(rnorm(n * m), nrow = n, ncol = m)
 y <- rnorm(n)
 weights <- 0.9 ^ (n:1)
 ```
-Then, to compute rolling and expanding Shapley values, use the `roll_shap` function:
+Then, to compute rolling and expanding Shapley values, use the `roll_shap()` function:
 
 ```r
 # rolling Shapley values with complete windows
@@ -55,8 +55,8 @@ roll_shap(x, y, width = n, min_obs = 1)
 roll_shap(x, y, width = n, min_obs = 1, weights = weights)
 ```
 
-Note that handling of missing values is supported as well (see the `min_obs`, `complete_obs`, and `na_restore` arguments).
+Handling of missing values is also supported (see the `min_obs`, `complete_obs`, and `na_restore` arguments).
 
 ## References
 
-Shapley, L.S. (1953). "A Value for n-Person Games." In *Contributions to the Theory of Games, Volume II*, edited by H.W. Kuhn and A.W. Tucker, 307-317. Princeton University Press.
+Shapley, L.S. (1953). "A Value for n-Person Games." In *Contributions to the Theory of Games, Volume II*, edited by H.W. Kuhn and A.W. Tucker, 307-317. Princeton University Press. <doi:10.1515/9781400881970-018>
