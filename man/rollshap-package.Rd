@@ -9,7 +9,7 @@
   \packageDescription{rollshap}
 }
 \details{
-  \code{rollshap} is a package that provides analytical computation of rolling Shapley values for time-series data.
+  \code{rollshap} is a package that provides analytical computation of rolling and expanding Shapley values for time-series data.
 }
 \author{
   \packageAuthor{rollshap}
