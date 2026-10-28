@@ -7,13 +7,21 @@ dates <- rev(seq(Sys.Date(), length.out = n_obs, by = "-1 day"))
 
 # test arguments
 test_width <- c(1, 5, 10, 15)
-test_intercept <- TRUE # relaimpo: "model must contain intercept"
-test_min_obs <- 1
+test_intercept <- c(TRUE, FALSE)
+test_min_obs <- c(1, 5, 10, 15)
+test_complete_obs <- c(TRUE, FALSE)
+test_na_restore <- c(TRUE, FALSE)
+test_online <- c(TRUE, FALSE)
 
 # test data
 test_ls <- list("random matrix with 0's" =
                   matrix(sample(c(0, rnorm(n_size - 1)), n_size, replace = TRUE,
                                 prob = rep(1 / n_size, n_size)),
+                         nrow = n_obs, ncol = n_vars),
+                
+                "random matrix with 0's and NA's" =
+                  matrix(sample(c(NA, 0, rnorm(n_size - 2)), n_size, replace = TRUE,
+                                prob = c(1 / n_vars, rep(1 / n_size, n_size - 1))),
                          nrow = n_obs, ncol = n_vars))
 
 if (requireNamespace("zoo", quietly = TRUE)) {

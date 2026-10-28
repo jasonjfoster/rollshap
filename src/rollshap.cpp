@@ -280,6 +280,10 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
     int n_cols_y = yy.ncol();
+
+    // check 'n_cols' variable for errors
+    rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
+
     int n_combn = 1 << n_cols_x; // 2 ^ n_cols_x
     int n_combn_half = n_combn / 2;
     arma::mat arma_x = arma::mat(xx.begin(), n_rows_xy, n_cols_x);
@@ -288,9 +292,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     arma::mat arma_rsq(n_rows_xy, n_combn, arma::fill::zeros);
     arma::mat arma_rsq_sum(n_rows_xy, n_cols_x, arma::fill::zeros);
     List result_z(3);
-
-    // check 'n_cols' variable for errors
-    rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
 
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
@@ -456,6 +457,10 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     
     int n_rows_xy = xx.nrow();
     int n_cols_x = xx.ncol();
+
+    // check 'n_cols' variable for errors
+    rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
+
     int n_combn = 1 << n_cols_x; // 2 ^ n_cols_x
     int n_combn_half = n_combn / 2;
     arma::mat arma_x = arma::mat(xx.begin(), n_rows_xy, n_cols_x);
@@ -464,9 +469,6 @@ SEXP roll_shap(const SEXP& x, const SEXP& y,
     arma::mat arma_rsq(n_rows_xy, n_combn, arma::fill::zeros);
     arma::mat arma_rsq_sum(n_rows_xy, n_cols_x, arma::fill::zeros);
     List result_z(3);
-
-    // check 'n_cols' variable for errors
-    rollshap::check_bounds_int(n_cols_x, 1, 20, "n_cols");
     
     // number of binary combinations
     for (int k = 0; k < n_combn; k++) {
