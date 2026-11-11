@@ -1,9 +1,6 @@
 test_that("input checks", {
   
   # test data
-  test_check_x <- c(lapply(test_ls[1], function(x){x[ , 1:3]}),
-                    list("random vector with 0's" = test_ls[[1]][ , 1]))
-  test_check_y <- test_ls[[1]][ , 4]
   width <- test_width[2]
   
   for (ax in 1:length(test_check_x)) {
@@ -36,9 +33,6 @@ test_that("input checks", {
 test_that("input warnings", {
   
   # test data
-  test_check_x <- c(lapply(test_ls[1], function(x){x[ , 1:3]}),
-                    list("random vector with 0's" = test_ls[[1]][ , 1]))
-  test_check_y <- test_ls[[1]][ , 4]
   width <- test_width[2]
   
   for (ax in 1:length(test_check_x)) {

@@ -31,3 +31,7 @@ if (requireNamespace("zoo", quietly = TRUE)) {
 test_ls[[1]] <- setNames(test_ls[[1]], paste0("x", rep(1:n_vars)))
 
 # colnames(test_ls[[1]]) <- paste0("x", rep(1:n_vars))
+
+test_check_x <- c(lapply(test_ls[1], function(x){x[ , 1:3]}),
+                  list("random vector with 0's" = test_ls[[1]][ , 1]))
+test_check_y <- test_ls[[1]][ , 4]
